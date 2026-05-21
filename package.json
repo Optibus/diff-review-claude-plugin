@@ -1,0 +1,33 @@
+{
+  "name": "diff-review",
+  "version": "0.1.0",
+  "description": "GitHub-style diff GUI for reviewing Claude Code's changes from the CLI.",
+  "type": "module",
+  "bin": {
+    "diff-review": "bin/diff-review.js"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "node --test --import tsx test/*.test.ts",
+    "test:browser": "npm run build && playwright test",
+    "test": "npm run test:unit && npm run test:browser"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-diff-view": "^3.2.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.23.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

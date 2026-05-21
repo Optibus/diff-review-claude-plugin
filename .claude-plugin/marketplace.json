@@ -1,0 +1,19 @@
+{
+  "name": "diff-review-marketplace",
+  "owner": {
+    "name": "Adam Mooney"
+  },
+  "plugins": [
+    {
+      "name": "diff-review",
+      "source": "./",
+      "description": "GitHub-style diff GUI for reviewing Claude's changes from a CLI session.",
+      "keywords": ["code-review", "diff", "git", "browser"],
+      "strict": false
+    }
+  ],
+  "metadata": {
+    "description": "Marketplace hosting the diff-review plugin.",
+    "version": "0.1.0"
+  }
+}

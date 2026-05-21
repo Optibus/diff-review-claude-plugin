@@ -2,7 +2,7 @@
 
 A Claude Code plugin that gives you a GitHub-style diff GUI for reviewing code from inside a CLI session.
 
-Type `/diff-review` in a running Claude session → a browser tab opens with a clickable diff → leave per-line comments and an overall summary → click **Submit review** → your structured feedback is injected back into the conversation and Claude starts addressing it.
+Type `/diff-review:start` in a running Claude session → a browser tab opens with a clickable diff → leave per-line comments and an overall summary → click **Submit review** → your structured feedback is injected back into the conversation and Claude starts addressing it.
 
 ![Screenshot of the diff-review UI: branch picker, file tree with comment-count badge, a diff with an inline comment thread, and an overall-summary panel](docs/screenshot.png)
 
@@ -28,7 +28,7 @@ git clone <this-repo-url> diff-review
 cd diff-review
 
 claude plugin marketplace add .
-claude plugin install diff-review-skill@diff-review-marketplace
+claude plugin install diff-review@diff-review-marketplace
 ```
 
 That's it — `bin/diff-review.js` is pre-built and committed, so no `npm install` is needed to use the plugin.
@@ -42,7 +42,7 @@ claude plugin marketplace add github:<owner>/<repo>
 # or, for any git URL:
 claude plugin marketplace add https://github.com/<owner>/<repo>.git
 
-claude plugin install diff-review-skill@diff-review-marketplace
+claude plugin install diff-review@diff-review-marketplace
 ```
 
 ### Verify
@@ -50,7 +50,7 @@ claude plugin install diff-review-skill@diff-review-marketplace
 In a Claude Code session:
 
 ```
-> /diff-review
+> /diff-review:start
 ```
 
 should appear in the slash-command palette. Run it inside any git working tree to open the review UI.
@@ -58,9 +58,9 @@ should appear in the slash-command palette. Run it inside any git working tree t
 ### Update / uninstall
 
 ```bash
-claude plugin update diff-review-skill            # refresh from marketplace
+claude plugin update diff-review                       # refresh from marketplace
 claude plugin marketplace update diff-review-marketplace
-claude plugin uninstall diff-review-skill               # remove the plugin
+claude plugin uninstall diff-review               # remove the plugin
 claude plugin marketplace remove diff-review-marketplace  # remove the marketplace
 ```
 
@@ -71,8 +71,10 @@ Persisted draft reviews live separately, under `~/.diff-review/` (see [Storage](
 In any Claude session inside a git repository:
 
 ```
-/diff-review
+/diff-review:start
 ```
+
+(`/diff-review` is accepted as a shorthand if no other matching command exists, but autocomplete will show the full `:start` form.)
 
 A browser tab opens at `http://127.0.0.1:<port>`. Layout:
 
@@ -111,7 +113,7 @@ Click **Submit review** → confirmation page → CLI binary exits with the mark
 
 ### Cancelling
 
-Click **Discard** (you get an inline confirm bar — no browser modal) or `Ctrl+C` the CLI. Drafts stay on disk; the next `/diff-review` resumes where you left off.
+Click **Discard** (you get an inline confirm bar — no browser modal) or `Ctrl+C` the CLI. Drafts stay on disk; the next `/diff-review:start` invocation resumes where you left off.
 
 ## Output format
 
@@ -142,7 +144,7 @@ Comments are sorted by file path, then by start line. The whole block — headin
 ├── .claude-plugin/
 │   ├── plugin.json               # Plugin manifest
 │   └── marketplace.json          # One-plugin marketplace so `claude plugin install` works
-├── commands/diff-review.md       # Slash-command definition (executes the binary, captures stdout)
+├── commands/start.md             # /diff-review:start slash command (executes the binary, captures stdout)
 ├── bin/diff-review.js            # Built artifact — single Node ESM file, ~240 KB, web UI inlined
 ├── src/
 │   ├── cli/                      # Node http server, git wrappers, drafts I/O, output formatter
@@ -157,8 +159,8 @@ How a request flows:
 
 ```
 Claude CLI session
-  ⤷ /diff-review
-       ⤷ commands/diff-review.md (slash command)
+  ⤷ /diff-review:start
+       ⤷ commands/start.md (slash command)
             ⤷ node bin/diff-review.js  ←(blocks)
                  ⤷ Node http server on 127.0.0.1:<port>
                  ⤷ Opens default browser
@@ -261,7 +263,7 @@ diff-review [diff-source]
 
 **Port already in use.** Pass `--port <n>` to pick another, or let the default random-port behavior re-roll.
 
-**The plugin commands list doesn't show `/diff-review`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review-skill && claude plugin install diff-review-skill@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
+**The plugin commands list doesn't show `/diff-review`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review && claude plugin install diff-review@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
 
 ## What's not in v1
 

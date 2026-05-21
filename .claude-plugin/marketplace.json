@@ -5,7 +5,7 @@
   },
   "plugins": [
     {
-      "name": "diff-review-skill",
+      "name": "diff-review",
       "source": "./",
       "description": "GitHub-style diff GUI for reviewing Claude's changes from a CLI session.",
       "keywords": ["code-review", "diff", "git", "browser"],

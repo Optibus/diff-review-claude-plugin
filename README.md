@@ -83,7 +83,7 @@ In any Claude session inside a git repository:
 
 A browser tab opens at `http://127.0.0.1:<port>`. Layout:
 
-- **Top bar** — branch name, diff-source picker, unified/split toggle, comment count, **Discard** / **Submit review**
+- **Top bar** — branch name, diff-source picker, unified/split toggle, comment count, **Clear all comments** / **Discard** / **Submit review**
 - **Left** — file tree with comment-count badges
 - **Center** — the diff; clickable line gutters
 - **Right** — optional overall-summary box
@@ -100,6 +100,8 @@ A browser tab opens at `http://127.0.0.1:<port>`. Layout:
 | Delete a saved comment | **Delete** on the thread |
 
 Comments save individually when you click **Save**. The overall-summary box auto-saves on blur (with a 1s debounce). All drafts persist to disk between browser refreshes and across CLI restarts.
+
+To wipe every saved comment at once (keeping the summary), use **Clear all comments** in the top bar. You'll get an inline confirmation prompt before anything is deleted; the action can't be undone.
 
 ### Switching diff sources
 
@@ -216,6 +218,7 @@ Hard goal: minimize them.
 
 - `react`, `react-dom` — UI framework
 - `react-diff-view` — GitHub-style diff renderer with line interaction (pulls in `gitdiff-parser` as a transitive)
+- `refractor` (v3, pinned to match `react-diff-view`'s peer expectation) — Prism-based syntax tokenizer driving diff highlighting
 
 **Dev only:**
 
@@ -291,9 +294,8 @@ If you want a fresh session anyway, submit or discard the existing one (or `kill
 
 - Verdicts (approve / request changes / comment only)
 - GitHub-style "suggestion" code blocks
-- Syntax highlighting in the diff (skipped to keep the bundle thin)
 - Reviewing remote PRs from `gh pr` — this is local-only
-- Multi-tab review on a single server
+- Multi-tab editing on a single server (newer tab supersedes older — by design)
 
 ## License
 

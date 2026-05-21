@@ -306,6 +306,14 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         return;
       }
 
+      if (req.method === "POST" && pathname === "/api/drafts/clear") {
+        const store = await storage.loadDrafts(fingerprint);
+        store.comments = {};
+        await storage.saveDrafts(fingerprint, store);
+        sendJson(res, 200, { ok: true });
+        return;
+      }
+
       if (req.method === "PUT" && pathname === "/api/summary") {
         const payload = (await readJsonBody(req)) as { summary?: unknown } | undefined;
         const summary = String(payload?.summary ?? "");

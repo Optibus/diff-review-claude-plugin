@@ -39,6 +39,8 @@ export const api = {
     jsonReq<Draft>(`/api/drafts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) }),
   deleteDraft: (id: string) =>
     jsonReq<{ ok: true }>(`/api/drafts/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  clearAllComments: () =>
+    jsonReq<{ ok: true }>("/api/drafts/clear", { method: "POST" }),
   saveSummary: (summary: string) =>
     jsonReq<{ summary: string }>("/api/summary", { method: "PUT", body: JSON.stringify({ summary }) }),
   submit: () => jsonReq<{ ok: true }>("/api/submit", { method: "POST" }),

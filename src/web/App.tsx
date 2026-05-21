@@ -46,6 +46,7 @@ export function App() {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [confirmingClearAll, setConfirmingClearAll] = useState(false);
   const fileRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Initial load
@@ -187,6 +188,23 @@ export function App() {
     }
   }, []);
 
+  const doClearAll = useCallback(async () => {
+    setBusy(true);
+    try {
+      await api.clearAllComments();
+      setDrafts((d) => ({ ...d, comments: {} }));
+    } catch (e) {
+      setState({ kind: "error", message: (e as Error).message });
+    } finally {
+      setBusy(false);
+      setConfirmingClearAll(false);
+    }
+  }, []);
+
+  const onClearAllClick = useCallback(() => {
+    setConfirmingClearAll(true);
+  }, []);
+
   const onDiscardClick = useCallback(() => {
     const hasContent =
       Object.values(drafts.comments).some((d) => d.body.trim() !== "") ||
@@ -258,6 +276,13 @@ export function App() {
         </div>
         <div className="topbar__right">
           <span className="topbar__count">{totalComments} comment{totalComments === 1 ? "" : "s"}</span>
+          <button
+            onClick={onClearAllClick}
+            disabled={busy || totalComments === 0}
+            title={totalComments === 0 ? "No comments to clear" : "Delete every saved comment in this review"}
+          >
+            Clear all comments
+          </button>
           <button onClick={onDiscardClick} disabled={busy}>Discard</button>
           <button className="primary" onClick={onSubmit} disabled={busy || !canSubmit} title={canSubmit ? "" : "Add a comment or summary first"}>
             Submit review
@@ -269,6 +294,13 @@ export function App() {
           <span>Discard this review? Drafts remain saved for next time.</span>
           <button onClick={() => void doCancel()} disabled={busy}>Yes, discard</button>
           <button onClick={() => setConfirmingDiscard(false)} disabled={busy}>Keep editing</button>
+        </div>
+      )}
+      {confirmingClearAll && (
+        <div className="confirm-bar">
+          <span>Delete all {totalComments} saved comment{totalComments === 1 ? "" : "s"}? The overall summary will be kept. This can't be undone.</span>
+          <button onClick={() => void doClearAll()} disabled={busy}>Yes, clear comments</button>
+          <button onClick={() => setConfirmingClearAll(false)} disabled={busy}>Cancel</button>
         </div>
       )}
       <main className="main">

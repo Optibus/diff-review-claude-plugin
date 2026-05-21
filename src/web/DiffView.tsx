@@ -8,12 +8,14 @@ import {
   getChangeKey,
   getCollapsedLinesCountBetween,
   parseDiff,
+  tokenize,
   useSourceExpansion,
 } from "react-diff-view";
-import type { ChangeData, DiffType, FileData, HunkData, ViewType } from "react-diff-view";
+import type { ChangeData, DiffType, FileData, HunkData, HunkTokens, ViewType } from "react-diff-view";
 import type { Draft } from "../cli/types";
 import { CommentThread } from "./CommentThread";
 import { api } from "./api";
+import { languageFor, refractor } from "./syntax";
 
 interface Props {
   diffText: string;
@@ -118,6 +120,16 @@ function FileDiffPanel({
   const [oldSourceStatus, setOldSourceStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [pending, setPending] = useState<PendingAnchor | null>(null);
   const [hunks, expandRange] = useSourceExpansion(file.hunks, oldSource);
+
+  const tokens: HunkTokens | null = useMemo(() => {
+    const lang = languageFor(path);
+    if (!lang) return null;
+    try {
+      return tokenize(hunks, { highlight: true, refractor, language: lang });
+    } catch {
+      return null;
+    }
+  }, [hunks, path]);
 
   // expandRange is stable per-render but only effective once oldSource is loaded.
   // Capture the latest in a ref so deferred expansions use the up-to-date callback.
@@ -263,6 +275,7 @@ function FileDiffPanel({
           viewType={viewType}
           hunks={hunks}
           widgets={widgets}
+          tokens={tokens}
           gutterEvents={{ onClick: handleGutterClick }}
         >
           {(visibleHunks) => renderHunksWithExpand(

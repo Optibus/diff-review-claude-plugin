@@ -153,6 +153,14 @@ test.describe("diff-review UI", () => {
     expect(stdout).toMatch(/docstring please/);
   });
 
+  test("diff is syntax-highlighted when the file extension maps to a known language", async ({ app }) => {
+    // The simple fixture is greeting.py — Python keywords should be highlighted.
+    const file = app.locator(".filediff", { hasText: "greeting.py" });
+    // refractor emits <span class="token keyword">def</span> etc.
+    await expect(file.locator(".token.keyword").first()).toBeVisible();
+    await expect(file.locator(".token.keyword").first()).toContainText(/def|return|if/);
+  });
+
   test("expand hidden lines: click the expand button shows previously-collapsed lines", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "long.txt" });
     // The 30-line file with a tiny edit at line 15 produces a small hunk
@@ -166,6 +174,42 @@ test.describe("diff-review UI", () => {
     await expandButtons.first().click();
     await expect(file.getByText("line 1", { exact: true })).toBeVisible();
   });
+});
+
+test("clear all comments wipes every saved comment after confirmation but keeps the summary", async ({ app }) => {
+  const file = app.locator(".filediff", { hasText: "greeting.py" });
+
+  // Save two comments and a summary.
+  await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+  await app.locator(".thread__textarea").fill("first comment");
+  await app.getByRole("button", { name: "Save", exact: true }).click();
+
+  await file.locator('td.diff-gutter-insert[data-change-key="I7"]').filter({ hasText: "7" }).click();
+  await app.locator(".thread__textarea").fill("second comment");
+  await app.getByRole("button", { name: "Save", exact: true }).click();
+
+  await app.locator(".summary__textarea").fill("Keep me");
+  await app.locator(".summary__textarea").blur();
+  await expect(app.locator(".summary__saved")).toContainText("Saved");
+  await expect(app.locator(".topbar__count")).toContainText("2 comments");
+
+  // Click Clear all → confirm bar appears.
+  await app.getByRole("button", { name: "Clear all comments" }).click();
+  await expect(app.locator(".confirm-bar")).toContainText("Delete all 2 saved comments");
+
+  // Cancel keeps everything.
+  await app.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(app.locator(".topbar__count")).toContainText("2 comments");
+
+  // Now confirm.
+  await app.getByRole("button", { name: "Clear all comments" }).click();
+  await app.getByRole("button", { name: "Yes, clear comments" }).click();
+  await expect(app.locator(".topbar__count")).toContainText("0 comments");
+  await expect(app.locator(".thread")).toHaveCount(0);
+  // Summary survives.
+  await expect(app.locator(".summary__textarea")).toHaveValue("Keep me");
+  // Submit stays enabled because summary still has content.
+  await expect(app.getByRole("button", { name: "Submit review" })).toBeEnabled();
 });
 
 test("opening the review in a second tab supersedes the first", async ({ bin, browser }) => {

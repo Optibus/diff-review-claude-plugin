@@ -33,7 +33,8 @@ type AppState =
   | { kind: "error"; message: string }
   | { kind: "ready"; ctx: { branch: string; root: string }; sources: DiffSource[] }
   | { kind: "submitted" }
-  | { kind: "cancelled" };
+  | { kind: "cancelled" }
+  | { kind: "superseded" };
 
 export function App() {
   const [state, setState] = useState<AppState>({ kind: "loading" });
@@ -67,7 +68,9 @@ export function App() {
 
   // Keep server alive
   useEffect(() => {
-    return openEventStream(() => {/* heartbeat */});
+    return openEventStream({
+      onSuperseded: () => setState({ kind: "superseded" }),
+    });
   }, []);
 
   // Load diff whenever source changes
@@ -209,6 +212,13 @@ export function App() {
       <div className="bigmsg">
         <h1>Review cancelled.</h1>
         <p>Your drafts are saved. Run <code>/diff-review</code> again to resume.</p>
+      </div>
+    );
+  if (state.kind === "superseded")
+    return (
+      <div className="bigmsg">
+        <h1>This review is now open in another tab.</h1>
+        <p>Only one tab at a time can edit a review. Switch to the newer tab or close this one — your drafts are safe on disk.</p>
       </div>
     );
 

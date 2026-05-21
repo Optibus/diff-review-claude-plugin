@@ -168,6 +168,29 @@ test.describe("diff-review UI", () => {
   });
 });
 
+test("opening the review in a second tab supersedes the first", async ({ bin, browser }) => {
+  const ctxA = await browser.newContext();
+  const ctxB = await browser.newContext();
+  const tabA = await ctxA.newPage();
+  const tabB = await ctxB.newPage();
+  try {
+    await tabA.goto(bin.url);
+    // Wait until tab A is mounted and the SSE 'hello' has been received.
+    await expect(tabA.locator(".topbar")).toBeVisible();
+
+    // Open the same URL in tab B. The server should immediately push
+    // 'superseded' to tab A and tab A should transition to the terminal state.
+    await tabB.goto(bin.url);
+    await expect(tabB.locator(".topbar")).toBeVisible();
+    await expect(tabA.locator(".bigmsg")).toContainText("now open in another tab");
+    // Tab B still works as normal.
+    await expect(tabB.locator(".bigmsg")).toHaveCount(0);
+  } finally {
+    await ctxA.close();
+    await ctxB.close();
+  }
+});
+
 // Resume test runs outside the standard `test`/`bin` fixture pair because it
 // needs to start the binary twice against the same repo.
 test("drafts persist across discard and reappear on resume", async () => {

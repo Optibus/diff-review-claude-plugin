@@ -45,9 +45,18 @@ export const api = {
   cancel: () => jsonReq<{ ok: true }>("/api/cancel", { method: "POST" }),
 };
 
-export function openEventStream(onPing: () => void): () => void {
+export interface EventStreamHandlers {
+  onHello?: () => void;
+  onSuperseded?: () => void;
+}
+
+export function openEventStream(handlers: EventStreamHandlers): () => void {
   const es = new EventSource(withToken("/api/events"));
-  es.addEventListener("hello", () => onPing());
+  es.addEventListener("hello", () => handlers.onHello?.());
+  es.addEventListener("superseded", () => {
+    handlers.onSuperseded?.();
+    es.close();
+  });
   es.onerror = () => {/* let browser auto-reconnect */};
   return () => es.close();
 }

@@ -206,6 +206,7 @@ rm -rf ~/.diff-review
 - Every API request requires a 32-byte random per-session token (in `?t=` or `X-Token`). Constant-time compared.
 - All git operations use `child_process.execFile` with argument arrays — no shell interpolation.
 - Single-instance lock per repo.
+- Single active tab per server: when a new tab connects to the SSE event stream, any prior tab is sent a `superseded` event, closed server-side, and shown a "this review is now open in another tab" message. Prevents divergent state from concurrent edits.
 
 ## Dependencies
 

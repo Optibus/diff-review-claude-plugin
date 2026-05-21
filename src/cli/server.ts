@@ -331,6 +331,14 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
       }
 
       if (req.method === "GET" && pathname === "/api/events") {
+        // Enforce single active tab: any existing SSE clients are sent a
+        // "superseded" event and closed before the new one joins.
+        for (const old of sseClients) {
+          try { old.write(`event: superseded\ndata: {}\n\n`); } catch { /* dead */ }
+          try { old.end(); } catch { /* ignore */ }
+        }
+        sseClients.clear();
+
         res.writeHead(200, {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-store",

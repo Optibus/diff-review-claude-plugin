@@ -1,6 +1,6 @@
 {
   "name": "diff-review",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "GitHub-style diff GUI for reviewing Claude Code's changes from the CLI.",
   "type": "module",
   "bin": {

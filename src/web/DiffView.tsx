@@ -290,6 +290,9 @@ function FileDiffPanel({
   );
 }
 
+// react-diff-view's expandFromRawCode treats `end` as EXCLUSIVE
+// (`source.slice(start-1, end-1)`). To reveal lines [a..b] inclusive,
+// call expandRange(a, b+1). All ranges here use exclusive-end accordingly.
 function renderHunksWithExpand(
   hunks: HunkData[],
   oldSourceLineCount: number | null,
@@ -302,18 +305,17 @@ function renderHunksWithExpand(
     const prev = i > 0 ? hunks[i - 1] : null;
 
     // Decoration BEFORE this hunk: gap from prev (or from line 1).
-    let gap: number;
+    // rangeEnd is one past the last hidden line (exclusive).
     let rangeStart: number;
     let rangeEnd: number;
     if (prev === null) {
-      gap = hunk.oldStart - 1;
       rangeStart = 1;
-      rangeEnd = hunk.oldStart - 1;
+      rangeEnd = hunk.oldStart;
     } else {
-      gap = getCollapsedLinesCountBetween(prev, hunk);
       rangeStart = prev.oldStart + prev.oldLines;
-      rangeEnd = hunk.oldStart - 1;
+      rangeEnd = hunk.oldStart;
     }
+    const gap = rangeEnd - rangeStart;
 
     if (gap > 0) {
       elements.push(
@@ -341,13 +343,15 @@ function renderHunksWithExpand(
   // Decoration AFTER the last hunk if there's content remaining in oldSource.
   if (oldSourceLineCount !== null && hunks.length > 0) {
     const last = hunks[hunks.length - 1];
-    const after = oldSourceLineCount - (last.oldStart + last.oldLines - 1);
+    const lastEndExclusive = last.oldStart + last.oldLines;       // first hidden line
+    const sourceEndExclusive = oldSourceLineCount + 1;             // one past EOF
+    const after = sourceEndExclusive - lastEndExclusive;
     if (after > 0) {
       elements.push(
         <Decoration key="expand-end">
           <button
             className="expand-btn"
-            onClick={() => handleExpand(last.oldStart + last.oldLines, oldSourceLineCount)}
+            onClick={() => handleExpand(lastEndExclusive, sourceEndExclusive)}
           >
             ↕ Expand {after} hidden line{after === 1 ? "" : "s"}
           </button>
@@ -357,11 +361,12 @@ function renderHunksWithExpand(
   } else if (oldSourceLineCount === null && oldSourceStatus !== "missing" && hunks.length > 0) {
     // We don't know the EOF yet; show a button that triggers source load.
     const last = hunks[hunks.length - 1];
+    const lastEndExclusive = last.oldStart + last.oldLines;
     elements.push(
       <Decoration key="expand-end-unknown">
         <button
           className="expand-btn expand-btn--probe"
-          onClick={() => handleExpand(last.oldStart + last.oldLines, last.oldStart + last.oldLines + 19)}
+          onClick={() => handleExpand(lastEndExclusive, lastEndExclusive + 20)}
         >
           {oldSourceStatus === "loading" ? "Loading…" : "↕ Expand below"}
         </button>

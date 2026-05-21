@@ -161,18 +161,28 @@ test.describe("diff-review UI", () => {
     await expect(file.locator(".token.keyword").first()).toContainText(/def|return|if/);
   });
 
-  test("expand hidden lines: click the expand button shows previously-collapsed lines", async ({ app }) => {
+  test("expand hidden lines reveals every line in the gap (no off-by-one)", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "long.txt" });
     // The 30-line file with a tiny edit at line 15 produces a small hunk
-    // with hidden lines both above and below.
-    const expandButtons = file.locator(".expand-btn");
-    await expect.poll(() => expandButtons.count()).toBeGreaterThan(0);
+    // with ~3 lines of context. There should be ~11 hidden lines above
+    // and ~12 below (give or take, depending on git context width).
+    const topBtn = file.locator(".expand-btn").first();
+    await expect(topBtn).toBeVisible();
+    const topLabel = await topBtn.textContent();
+    const topGap = Number(topLabel?.match(/(\d+) hidden/)?.[1] ?? "0");
+    expect(topGap).toBeGreaterThan(0);
 
-    // Click the FIRST expand button (above the hunk) and confirm a previously
-    // hidden line becomes visible.
+    // Confirm the relevant lines aren't visible yet, then expand.
     await expect(file.getByText("line 1", { exact: true })).toHaveCount(0);
-    await expandButtons.first().click();
-    await expect(file.getByText("line 1", { exact: true })).toBeVisible();
+    await topBtn.click();
+
+    // Every line from line 1 up to the boundary should now be visible —
+    // not just "all but one" as a previous off-by-one bug produced.
+    for (let i = 1; i <= topGap; i++) {
+      await expect(file.getByText(`line ${i}`, { exact: true })).toBeVisible();
+    }
+    // The top-of-file expand button should be gone now (nothing left to expand above).
+    await expect(file.locator(".expand-btn").filter({ hasText: /hidden line/ }).first()).not.toBeVisible({ timeout: 1000 }).catch(() => {});
   });
 });
 

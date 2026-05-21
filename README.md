@@ -28,7 +28,7 @@ git clone <this-repo-url> diff-review
 cd diff-review
 
 claude plugin marketplace add .
-claude plugin install diff-review@diff-review-marketplace
+claude plugin install diff-review-skill@diff-review-marketplace
 ```
 
 That's it — `bin/diff-review.js` is pre-built and committed, so no `npm install` is needed to use the plugin.
@@ -42,7 +42,7 @@ claude plugin marketplace add github:<owner>/<repo>
 # or, for any git URL:
 claude plugin marketplace add https://github.com/<owner>/<repo>.git
 
-claude plugin install diff-review@diff-review-marketplace
+claude plugin install diff-review-skill@diff-review-marketplace
 ```
 
 ### Verify
@@ -58,9 +58,9 @@ should appear in the slash-command palette. Run it inside any git working tree t
 ### Update / uninstall
 
 ```bash
-claude plugin update diff-review                  # refresh from marketplace
+claude plugin update diff-review-skill            # refresh from marketplace
 claude plugin marketplace update diff-review-marketplace
-claude plugin uninstall diff-review               # remove the plugin
+claude plugin uninstall diff-review-skill               # remove the plugin
 claude plugin marketplace remove diff-review-marketplace  # remove the marketplace
 ```
 
@@ -261,7 +261,7 @@ diff-review [diff-source]
 
 **Port already in use.** Pass `--port <n>` to pick another, or let the default random-port behavior re-roll.
 
-**The plugin commands list doesn't show `/diff-review`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review && claude plugin install diff-review@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
+**The plugin commands list doesn't show `/diff-review`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review-skill && claude plugin install diff-review-skill@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
 
 ## What's not in v1
 

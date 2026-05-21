@@ -815,8 +815,10 @@ async function main() {
 `);
         return 0;
       }
-      process.stderr.write(`diff-review: ${e.message}
-`);
+      process.stderr.write(
+        `diff-review: another diff-review is running (PID ${e.pid ?? "?"}) but I can't recover its URL \u2014 likely an older version of the plugin. Either submit/discard it from its open browser tab, or free the lock with: kill ${e.pid ?? "<pid>"}
+`
+      );
       return 1;
     }
     throw e;

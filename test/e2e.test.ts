@@ -126,6 +126,23 @@ test("e2e: second invocation while one is running reconnects to the existing ses
   } finally { await cleanup(dir, fp); }
 });
 
+test("e2e: lock held by live PID with no instance.json prints an actionable error", async () => {
+  const { dir, fp } = await makeRepo();
+  try {
+    // Simulate an older-version instance: write the lock with the current
+    // process's live PID but NO instance.json file alongside.
+    const { promises: fsp } = await import("node:fs");
+    const { storageDir, lockPath } = await import("../src/cli/storage.js");
+    await fsp.mkdir(storageDir(fp), { recursive: true });
+    await fsp.writeFile(lockPath(fp), String(process.pid), "utf8");
+
+    const r = await runBinary(["--no-browser"], dir);
+    assert.equal(r.code, 1);
+    assert.match(r.stderr, /older version|kill /);
+    assert.match(r.stderr, new RegExp(`kill ${process.pid}`));
+  } finally { await cleanup(dir, fp); }
+});
+
 test("e2e: full HTTP flow — start server, save draft via fetch, submit", async () => {
   const { dir, fp } = await makeRepo();
   try {

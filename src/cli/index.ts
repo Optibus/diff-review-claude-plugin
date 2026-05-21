@@ -105,7 +105,14 @@ async function main(): Promise<number> {
         process.stdout.write(`(reconnected — review still open in your browser)\n`);
         return 0;
       }
-      process.stderr.write(`diff-review: ${e.message}\n`);
+      // Lock is held but we have no instance.json — typically because the
+      // running process is an older version that didn't write one. Give the
+      // user something they can act on.
+      process.stderr.write(
+        `diff-review: another diff-review is running (PID ${e.pid ?? "?"}) but I can't recover its URL` +
+        ` — likely an older version of the plugin. Either submit/discard it from its open browser tab,` +
+        ` or free the lock with: kill ${e.pid ?? "<pid>"}\n`,
+      );
       return 1;
     }
     throw e;

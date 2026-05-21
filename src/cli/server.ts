@@ -1,6 +1,8 @@
 import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
+import { promises as fs } from "node:fs";
 import { AddressInfo } from "node:net";
+import path from "node:path";
 import * as git from "./git.js";
 import * as storage from "./storage.js";
 import type { Draft, DiffSource, SubmissionResult } from "./types.js";
@@ -71,6 +73,8 @@ function parseDraftPayload(input: unknown, idFromUrl: string): Draft {
   const side = r.side === "LEFT" ? "LEFT" : "RIGHT";
   const body = String(r.body ?? "");
   const sourceId = String(r.sourceId ?? "");
+  const sourceLabel = typeof r.sourceLabel === "string" ? r.sourceLabel : undefined;
+  const lineSnippet = typeof r.lineSnippet === "string" ? r.lineSnippet : undefined;
   if (!file) throw new Error("draft.file required");
   if (!Number.isInteger(startLine) || startLine < 1) throw new Error("draft.startLine must be positive integer");
   if (!Number.isInteger(endLine) || endLine < startLine) throw new Error("draft.endLine must be >= startLine");
@@ -83,6 +87,8 @@ function parseDraftPayload(input: unknown, idFromUrl: string): Draft {
     side,
     body,
     sourceId,
+    sourceLabel,
+    lineSnippet,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -142,6 +148,39 @@ function sourceToDiffOpts(source: DiffSource): git.DiffOptions {
     case "commit":
       return { commit: source.commit! };
   }
+}
+
+/**
+ * Compute the git refs (or "worktree" sentinel) that the old and new sides of
+ * a diff source correspond to. Used by the `/api/source` endpoint to fetch the
+ * full file content for "expand collapsed lines" requests.
+ */
+function sourceToRefs(source: DiffSource): { old: string | null; new: string | "worktree" } {
+  switch (source.kind) {
+    case "branch-vs-base":
+      return { old: source.base!, new: "HEAD" };
+    case "branch-vs-base-with-unstaged":
+      return { old: source.base!, new: "worktree" };
+    case "unstaged":
+      return { old: "HEAD", new: "worktree" };
+    case "commit":
+      return { old: `${source.commit}^`, new: source.commit! };
+  }
+}
+
+async function readFileForSide(
+  refOrWorktree: string | "worktree",
+  filePath: string,
+  cwd: string,
+): Promise<string | null> {
+  if (refOrWorktree === "worktree") {
+    try {
+      return await fs.readFile(path.join(cwd, filePath), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  return git.readFileAtRef(refOrWorktree, filePath, cwd);
 }
 
 export function createServer(deps: ServerDeps): Promise<RunningServer> {
@@ -223,6 +262,21 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         const diff = await git.getDiff(sourceToDiffOpts(source), cwd);
         const files = await git.changedFiles(sourceToDiffOpts(source), cwd);
         sendJson(res, 200, { diff, files, sourceId: source.id });
+        return;
+      }
+
+      if (req.method === "GET" && pathname === "/api/source") {
+        const sourceId = url.searchParams.get("source") ?? "";
+        const filePath = url.searchParams.get("path") ?? "";
+        const side = url.searchParams.get("side") === "new" ? "new" : "old";
+        const source = await sourceById(sourceId);
+        if (!source) return sendJson(res, 404, { error: "unknown source" });
+        if (!filePath || filePath.includes("..")) return sendJson(res, 400, { error: "invalid path" });
+        const refs = sourceToRefs(source);
+        const ref = side === "new" ? refs.new : refs.old;
+        if (ref === null) return sendJson(res, 200, { content: null });
+        const content = await readFileForSide(ref, filePath, cwd);
+        sendJson(res, 200, { content });
         return;
       }
 

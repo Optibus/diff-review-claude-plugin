@@ -205,6 +205,35 @@ test("POST /api/cancel resolves the server as cancelled", async () => {
   } finally { await h.close(); }
 });
 
+test("GET /api/source returns file content for the old side", async () => {
+  const h = await startHarness();
+  try {
+    const r = await api(h, "/api/source?source=branch&path=a.txt&side=old");
+    assert.equal(r.status, 200);
+    const body = await r.json() as { content: string | null };
+    assert.match(body.content ?? "", /alpha\nbeta\ngamma/);
+  } finally { await h.close(); }
+});
+
+test("GET /api/source returns null content for a file that didn't exist on a side", async () => {
+  const h = await startHarness();
+  try {
+    // a.txt didn't exist at base+1 commits; this is the initial state.
+    const r = await api(h, "/api/source?source=branch&path=nonexistent.txt&side=old");
+    assert.equal(r.status, 200);
+    const body = await r.json() as { content: string | null };
+    assert.equal(body.content, null);
+  } finally { await h.close(); }
+});
+
+test("GET /api/source rejects ../ path-traversal attempts", async () => {
+  const h = await startHarness();
+  try {
+    const r = await api(h, "/api/source?source=branch&path=../etc/passwd&side=old");
+    assert.equal(r.status, 400);
+  } finally { await h.close(); }
+});
+
 test("PUT /api/drafts rejects invalid payload", async () => {
   const h = await startHarness();
   try {

@@ -30,6 +30,10 @@ export const api = {
   sources: () => jsonReq<{ sources: DiffSource[] }>("/api/diff-sources"),
   diff: (sourceId: string) =>
     jsonReq<{ diff: string; files: string[]; sourceId: string }>(`/api/diff?source=${encodeURIComponent(sourceId)}`),
+  fileAt: (sourceId: string, filePath: string, side: "old" | "new") =>
+    jsonReq<{ content: string | null }>(
+      `/api/source?source=${encodeURIComponent(sourceId)}&path=${encodeURIComponent(filePath)}&side=${side}`,
+    ),
   drafts: () => jsonReq<DraftStore>("/api/drafts"),
   saveDraft: (id: string, draft: Omit<Draft, "id" | "updatedAt">) =>
     jsonReq<Draft>(`/api/drafts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) }),

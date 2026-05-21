@@ -116,6 +116,18 @@ export async function getDiff(opts: DiffOptions, cwd: string): Promise<string> {
 }
 
 /**
+ * Read a file's contents at a given git ref. Returns null if the path doesn't
+ * exist at that ref (e.g., newly-added or deleted files).
+ */
+export async function readFileAtRef(ref: string, path: string, cwd: string): Promise<string | null> {
+  try {
+    return await git(["show", `${ref}:${path}`], cwd);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * List files changed in a given diff. Used to validate draft anchors.
  */
 export async function changedFiles(opts: DiffOptions, cwd: string): Promise<string[]> {

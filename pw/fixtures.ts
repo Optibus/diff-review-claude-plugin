@@ -15,7 +15,7 @@ export interface RepoFixture {
   git: (...args: string[]) => Promise<{ stdout: string; stderr: string }>;
 }
 
-export async function makeRepo(scenario: "simple" | "multifile"): Promise<RepoFixture> {
+export async function makeRepo(scenario: "simple" | "multifile" | "expandable"): Promise<RepoFixture> {
   const dir = await fs.mkdtemp("/tmp/diff-review-pw-");
   const git = (...args: string[]) => exec("git", args, { cwd: dir });
   await git("init", "-q", "-b", "main");
@@ -55,6 +55,19 @@ export async function makeRepo(scenario: "simple" | "multifile"): Promise<RepoFi
     ].join("\n"));
     await git("add", ".");
     await git("commit", "-q", "-m", "modernize greeting");
+  } else if (scenario === "expandable") {
+    // A 30-line file with one tiny edit in the middle. The diff hunk
+    // exposes ~3 lines of context around the change, leaving the rest
+    // hidden — perfect for testing expand-collapsed behavior.
+    const before = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
+    await fs.writeFile(path.join(dir, "long.txt"), before);
+    await git("add", ".");
+    await git("commit", "-q", "-m", "initial 30-line file");
+    await git("checkout", "-q", "-b", "tiny-edit");
+    const after = Array.from({ length: 30 }, (_, i) => i === 14 ? "line 15 EDITED" : `line ${i + 1}`).join("\n") + "\n";
+    await fs.writeFile(path.join(dir, "long.txt"), after);
+    await git("add", ".");
+    await git("commit", "-q", "-m", "edit line 15");
   } else {
     await fs.writeFile(path.join(dir, "a.txt"), "one\ntwo\n");
     await git("add", ".");
@@ -151,7 +164,8 @@ type Fixtures = {
 
 export const test = base.extend<Fixtures>({
   repo: async ({}, use, testInfo) => {
-    const scenario = testInfo.title.includes("multi") ? "multifile" : "simple";
+    const t = testInfo.title;
+    const scenario = t.includes("expand") ? "expandable" : t.includes("multi") ? "multifile" : "simple";
     const repo = await makeRepo(scenario);
     await use(repo);
     await fs.rm(repo.dir, { recursive: true, force: true });

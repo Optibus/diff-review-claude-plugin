@@ -67,6 +67,8 @@ test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts 
           side: "RIGHT",
           body: "use lowercase",
           sourceId: "branch",
+          sourceLabel: "topic vs main",
+          lineSnippet: "WORLD",
           updatedAt: new Date().toISOString(),
         },
         "hello.txt:3:3:RIGHT": {
@@ -77,6 +79,8 @@ test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts 
           side: "RIGHT",
           body: "spell-check 'goodbye'",
           sourceId: "branch",
+          sourceLabel: "topic vs main",
+          lineSnippet: "goodbye",
           updatedAt: new Date().toISOString(),
         },
       },
@@ -85,8 +89,8 @@ test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts 
     assert.equal(r.code, 0, `stderr was: ${r.stderr}`);
     assert.match(r.stdout, /^# Code review feedback/);
     assert.match(r.stdout, /## Overall\n\nlooks great overall/);
-    assert.match(r.stdout, /### hello\.txt:2\n\nuse lowercase/);
-    assert.match(r.stdout, /### hello\.txt:3\n\nspell-check 'goodbye'/);
+    assert.match(r.stdout, /### hello\.txt:2 \(topic vs main\)\n\n> WORLD\n\nuse lowercase/);
+    assert.match(r.stdout, /### hello\.txt:3 \(topic vs main\)\n\n> goodbye\n\nspell-check 'goodbye'/);
     // Drafts should be cleared after a successful submit.
     const drafted = await fs.readFile(path.join(storageDir(fp), "drafts.json"), "utf8").catch(() => null);
     assert.equal(drafted, null);

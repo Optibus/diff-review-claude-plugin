@@ -1,11 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FileData, ViewType } from "react-diff-view";
+import { computeNewLineNumber, computeOldLineNumber } from "react-diff-view";
+import type { ChangeData, FileData, ViewType } from "react-diff-view";
 import { api, openEventStream } from "./api";
 import { DiffSourcePicker } from "./DiffSourcePicker";
 import { FileTree } from "./FileTree";
 import { DiffView } from "./DiffView";
 import { SummaryBox } from "./SummaryBox";
 import type { DiffSource, Draft, DraftStore } from "../cli/types";
+
+function snippetFor(
+  files: FileData[],
+  filePath: string,
+  startLine: number,
+  endLine: number,
+  side: "LEFT" | "RIGHT",
+): string | undefined {
+  const file = files.find((f) => (f.newPath ?? f.oldPath) === filePath || (f.oldPath ?? f.newPath) === filePath);
+  if (!file) return undefined;
+  const lineNoOf = side === "LEFT" ? computeOldLineNumber : computeNewLineNumber;
+  const lines: string[] = [];
+  for (const hunk of file.hunks) {
+    for (const change of hunk.changes as ChangeData[]) {
+      const n = lineNoOf(change);
+      if (n >= startLine && n <= endLine) lines.push(change.content);
+    }
+  }
+  return lines.length > 0 ? lines.join("\n") : undefined;
+}
 
 type AppState =
   | { kind: "loading" }
@@ -108,11 +129,15 @@ export function App() {
         side: existing?.side ?? side,
         body,
         sourceId: currentSource,
+        sourceLabel: state.kind === "ready"
+          ? state.sources.find((s) => s.id === currentSource)?.label
+          : undefined,
+        lineSnippet: snippetFor(files, file, startLine, endLine, side),
       };
       const saved = await api.saveDraft(id, draft);
       setDrafts((d) => ({ ...d, comments: { ...d.comments, [id]: saved } }));
     },
-    [drafts, currentSource],
+    [drafts, currentSource, files, state],
   );
 
   const onDeleteDraft = useCallback(

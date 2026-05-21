@@ -3,7 +3,14 @@ import { test } from "node:test";
 import { formatReview } from "../src/cli/output.js";
 import type { DraftStore } from "../src/cli/types.js";
 
-function draft(file: string, startLine: number, endLine: number, body: string, id = `${file}:${startLine}:${endLine}:RIGHT`): DraftStore["comments"][string] {
+function draft(
+  file: string,
+  startLine: number,
+  endLine: number,
+  body: string,
+  extras: Partial<DraftStore["comments"][string]> = {},
+  id = `${file}:${startLine}:${endLine}:RIGHT`,
+): DraftStore["comments"][string] {
   return {
     id,
     file,
@@ -13,6 +20,7 @@ function draft(file: string, startLine: number, endLine: number, body: string, i
     body,
     sourceId: "branch",
     updatedAt: "2026-01-01T00:00:00Z",
+    ...extras,
   };
 }
 
@@ -72,4 +80,34 @@ test("formatReview trims trailing whitespace from body but preserves internal ne
   const md = formatReview(store)!;
   assert.match(md, /line1\nline2/);
   assert.doesNotMatch(md, /line2\n\n  /);
+});
+
+test("formatReview includes sourceLabel in the heading when present", () => {
+  const c = draft("a.ts", 5, 5, "fix this", { sourceLabel: "feature vs main" });
+  const store: DraftStore = { schemaVersion: 1, comments: { [c.id]: c }, summary: "" };
+  const md = formatReview(store)!;
+  assert.match(md, /### a\.ts:5 \(feature vs main\)/);
+});
+
+test("formatReview emits a quoted lineSnippet block before the body", () => {
+  const c = draft("a.ts", 10, 12, "extract helper", {
+    sourceLabel: "feature vs main",
+    lineSnippet: "    for i in range(n):\n        if i % 2:\n            pass",
+  });
+  const store: DraftStore = { schemaVersion: 1, comments: { [c.id]: c }, summary: "" };
+  const md = formatReview(store)!;
+  assert.ok(md.includes(
+    "### a.ts:10-12 (feature vs main)\n\n" +
+    ">     for i in range(n):\n" +
+    ">         if i % 2:\n" +
+    ">             pass\n\n" +
+    "extract helper",
+  ));
+});
+
+test("formatReview omits the source suffix when sourceLabel is missing", () => {
+  const c = draft("a.ts", 1, 1, "x");
+  const store: DraftStore = { schemaVersion: 1, comments: { [c.id]: c }, summary: "" };
+  const md = formatReview(store)!;
+  assert.match(md, /### a\.ts:1\n/);
 });

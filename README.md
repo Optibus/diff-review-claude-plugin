@@ -107,6 +107,10 @@ The dropdown lets you toggle between:
 
 Drafts persist across switches. If you have a comment anchored to a line that doesn't appear in the current source, the file panel shows `1 comment(s) from other diff sources — switch source to see them.`
 
+### Expanding hidden context
+
+Between hunks (or above/below them) you'll see an `↕ Expand N hidden lines` button. Click it to fetch and inline those lines from the old-side file at that diff source. Useful when you want to comment on a line that sits just outside `git diff`'s default 3-line context window.
+
 ### Submitting
 
 Click **Submit review** → confirmation page → CLI binary exits with the markdown review on **stdout** → markdown gets injected back into the Claude conversation → Claude starts on the comments. Successfully-submitted drafts are cleared from disk.
@@ -126,14 +130,22 @@ Click **Discard** (you get an inline confirm bar — no browser modal) or `Ctrl+
 
 ## Comments
 
-### path/to/file.ts:42
+### path/to/file.ts:42 (refactor vs main)
+
+>     def shout(message: str) -> str:
 
 <comment body>
 
-### path/to/file.ts:101-118
+### path/to/file.ts:101-118 (commit 593c4b8 — modernize greeting)
+
+>     for item in items:
+>         if item.kind == "x":
+>             process(item)
 
 <comment body>
 ```
+
+Each heading carries the **diff source** so Claude knows which context the line numbers refer to (line 42 in `branch vs main` is not the same code as line 42 in a specific commit). The blockquote below the heading is the **actual line content** at save time — even if line numbers shift later, Claude can grep for the snippet.
 
 Comments are sorted by file path, then by start line. The whole block — heading and all — is what Claude sees as user input.
 

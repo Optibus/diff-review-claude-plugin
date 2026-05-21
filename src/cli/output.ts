@@ -34,8 +34,13 @@ export function formatReview(store: DraftStore): string | null {
       return a.endLine - b.endLine;
     });
     for (const c of sorted) {
-      lines.push(`### ${c.file}:${lineLabel(c.startLine, c.endLine)}`);
+      const sourceSuffix = c.sourceLabel ? ` (${c.sourceLabel})` : "";
+      lines.push(`### ${c.file}:${lineLabel(c.startLine, c.endLine)}${sourceSuffix}`);
       lines.push("");
+      if (c.lineSnippet && c.lineSnippet.trim() !== "") {
+        for (const snip of c.lineSnippet.split("\n")) lines.push(`> ${snip}`);
+        lines.push("");
+      }
       lines.push(c.body.trim());
       lines.push("");
     }

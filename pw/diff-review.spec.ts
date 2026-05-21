@@ -148,7 +148,23 @@ test.describe("diff-review UI", () => {
     expect(code).toBe(0);
     expect(stdout).toMatch(/^# Code review feedback/);
     expect(stdout).toMatch(/## Overall\n\nNice overall\./);
-    expect(stdout).toMatch(/### greeting\.py:8\n\ndocstring please/);
+    expect(stdout).toMatch(/### greeting\.py:8 \(refactor vs main\)/);
+    expect(stdout).toContain(">     return message.upper()");
+    expect(stdout).toMatch(/docstring please/);
+  });
+
+  test("expand hidden lines: click the expand button shows previously-collapsed lines", async ({ app }) => {
+    const file = app.locator(".filediff", { hasText: "long.txt" });
+    // The 30-line file with a tiny edit at line 15 produces a small hunk
+    // with hidden lines both above and below.
+    const expandButtons = file.locator(".expand-btn");
+    await expect.poll(() => expandButtons.count()).toBeGreaterThan(0);
+
+    // Click the FIRST expand button (above the hunk) and confirm a previously
+    // hidden line becomes visible.
+    await expect(file.getByText("line 1", { exact: true })).toHaveCount(0);
+    await expandButtons.first().click();
+    await expect(file.getByText("line 1", { exact: true })).toBeVisible();
   });
 });
 

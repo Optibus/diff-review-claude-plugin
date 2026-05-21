@@ -8,6 +8,10 @@ export interface Draft {
   side: Side;
   body: string;
   sourceId: string;
+  /** A human-readable label of the diff source at save time. Optional for backwards compat. */
+  sourceLabel?: string;
+  /** Snippet of the actual lines being commented on, so reviews survive line-number drift. */
+  lineSnippet?: string;
   updatedAt: string;
 }
 

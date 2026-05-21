@@ -58,10 +58,15 @@ should appear in the slash-command palette. Run it inside any git working tree t
 ### Update / uninstall
 
 ```bash
-claude plugin update diff-review                       # refresh from marketplace
+# Update: first refresh the marketplace cache, then pull the new plugin version.
+# Both commands needed — the marketplace update populates the local cache and
+# the plugin update consumes a new version if the marketplace published one.
 claude plugin marketplace update diff-review-marketplace
-claude plugin uninstall diff-review               # remove the plugin
-claude plugin marketplace remove diff-review-marketplace  # remove the marketplace
+claude plugin update diff-review@diff-review-marketplace
+
+# Remove
+claude plugin uninstall diff-review@diff-review-marketplace
+claude plugin marketplace remove diff-review-marketplace
 ```
 
 Persisted draft reviews live separately, under `~/.diff-review/` (see [Storage](#storage)) — uninstalling the plugin doesn't touch them.
@@ -277,7 +282,9 @@ If you want a fresh session anyway, submit or discard the existing one (or `kill
 
 **Port already in use.** Pass `--port <n>` to pick another, or let the default random-port behavior re-roll.
 
-**The plugin commands list doesn't show `/diff-review`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review && claude plugin install diff-review@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
+**The plugin commands list doesn't show `/diff-review:start`.** Confirm the marketplace registered (`claude plugin marketplace list`) and the plugin is installed (`claude plugin list`). If both look right but the slash command is absent, reinstall: `claude plugin uninstall diff-review@diff-review-marketplace && claude plugin install diff-review@diff-review-marketplace`. Validate the manifest with `claude plugin validate <path-to-clone>`.
+
+**`claude plugin update` says "already at the latest version" but the marketplace has new commits.** Plugin updates are gated by the `version` field in `.claude-plugin/plugin.json`. If the maintainer pushes code without bumping the version, `update` is a no-op. To force a fresh install: `claude plugin uninstall diff-review@diff-review-marketplace && claude plugin marketplace update diff-review-marketplace && claude plugin install diff-review@diff-review-marketplace`.
 
 ## What's not in v1
 

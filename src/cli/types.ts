@@ -24,7 +24,7 @@ export interface DraftStore {
 export interface DiffSource {
   id: string;
   label: string;
-  kind: "branch-vs-base" | "branch-vs-base-with-unstaged" | "unstaged" | "commit";
+  kind: "branch-vs-base" | "branch-vs-base-with-uncommitted" | "uncommitted" | "commit";
   commit?: string;
   base?: string;
 }

@@ -102,8 +102,8 @@ test.describe("diff-review UI", () => {
     await app.getByRole("button", { name: "Save", exact: true }).click();
     await expect(app.locator(".thread__body")).toContainText("anchored to branch view");
 
-    // Switch to "Unstaged changes only" — no diff content, comment becomes orphaned.
-    await app.locator(".picker__select").selectOption({ label: "Unstaged changes only" });
+    // Switch to "Uncommitted changes only" — no diff content, comment becomes orphaned.
+    await app.locator(".picker__select").selectOption({ label: "Uncommitted changes only" });
     // Either the empty-state message OR the orphans banner shows.
     await expect(app.locator("body")).toContainText(/from other diff sources|No changes to review/);
   });
@@ -148,7 +148,7 @@ test.describe("diff-review UI", () => {
     expect(code).toBe(0);
     expect(stdout).toMatch(/^# Code review feedback/);
     expect(stdout).toMatch(/## Overall\n\nNice overall\./);
-    expect(stdout).toMatch(/### greeting\.py:8 \(refactor vs main\)/);
+    expect(stdout).toMatch(/### greeting\.py:8 \(refactor vs main \(incl\. uncommitted\)\)/);
     expect(stdout).toContain(">     return message.upper()");
     expect(stdout).toMatch(/docstring please/);
   });

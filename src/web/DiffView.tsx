@@ -6,7 +6,6 @@ import {
   computeNewLineNumber,
   findChangeByNewLineNumber,
   getChangeKey,
-  getCollapsedLinesCountBetween,
   parseDiff,
   tokenize,
   useSourceExpansion,

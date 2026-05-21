@@ -8,7 +8,7 @@ Type `/diff-review:start` in a running Claude session → a browser tab opens wi
 
 ## Why
 
-Reviewing Claude's edits in the terminal is awkward — scrolling diffs, typing comments inline, losing track of what you wanted to say. `diff-review` gives you the review surface you'd actually want: line / range selection, persistent drafts, branch-vs-base / individual-commit / unstaged toggles. Without leaving the CLI loop.
+Reviewing Claude's edits in the terminal is awkward — scrolling diffs, typing comments inline, losing track of what you wanted to say. `diff-review` gives you the review surface you'd actually want: line / range selection, persistent drafts, branch-vs-base / individual-commit / uncommitted toggles. Without leaving the CLI loop.
 
 ## Install
 
@@ -107,9 +107,9 @@ To wipe every saved comment at once (keeping the summary), use **Clear all comme
 
 The dropdown lets you toggle between:
 
-- `<branch> vs <base>` — committed changes (default)
-- `<branch> vs <base> (incl. unstaged)` — layered with working-tree changes
-- `Unstaged changes only` — just `git diff`
+- `<branch> vs <base> (incl. uncommitted)` — **default**; the full branch diff layered with any uncommitted work (staged + unstaged)
+- `<branch> vs <base>` — committed changes only
+- `Uncommitted changes only` — just `git diff HEAD` (staged + unstaged)
 - Individual commits on the branch
 
 Drafts persist across switches. If you have a comment anchored to a line that doesn't appear in the current source, the file panel shows `1 comment(s) from other diff sources — switch source to see them.`

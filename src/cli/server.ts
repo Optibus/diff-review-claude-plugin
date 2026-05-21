@@ -103,23 +103,25 @@ async function listDiffSources(cwd: string): Promise<DiffSource[]> {
   }
   const head = await git.currentBranch(cwd);
   if (base) {
+    // Default selection: full branch diff plus any local uncommitted work
+    // (staged or unstaged). This is what users almost always want to review.
+    sources.push({
+      id: "branch-with-uncommitted",
+      label: `${head} vs ${base} (incl. uncommitted)`,
+      kind: "branch-vs-base-with-uncommitted",
+      base,
+    });
     sources.push({
       id: "branch",
       label: `${head} vs ${base}`,
       kind: "branch-vs-base",
       base,
     });
-    sources.push({
-      id: "branch-with-unstaged",
-      label: `${head} vs ${base} (incl. unstaged)`,
-      kind: "branch-vs-base-with-unstaged",
-      base,
-    });
   }
   sources.push({
-    id: "unstaged",
-    label: "Unstaged changes only",
-    kind: "unstaged",
+    id: "uncommitted",
+    label: "Uncommitted changes only",
+    kind: "uncommitted",
   });
   if (base) {
     try {
@@ -141,10 +143,10 @@ function sourceToDiffOpts(source: DiffSource): git.DiffOptions {
   switch (source.kind) {
     case "branch-vs-base":
       return { range: `${source.base}..HEAD` };
-    case "branch-vs-base-with-unstaged":
-      return { range: `${source.base}..HEAD`, includeUnstaged: true };
-    case "unstaged":
-      return { unstagedOnly: true };
+    case "branch-vs-base-with-uncommitted":
+      return { range: `${source.base}..HEAD`, includeUncommitted: true };
+    case "uncommitted":
+      return { uncommittedOnly: true };
     case "commit":
       return { commit: source.commit! };
   }
@@ -159,9 +161,9 @@ function sourceToRefs(source: DiffSource): { old: string | null; new: string | "
   switch (source.kind) {
     case "branch-vs-base":
       return { old: source.base!, new: "HEAD" };
-    case "branch-vs-base-with-unstaged":
+    case "branch-vs-base-with-uncommitted":
       return { old: source.base!, new: "worktree" };
-    case "unstaged":
+    case "uncommitted":
       return { old: "HEAD", new: "worktree" };
     case "commit":
       return { old: `${source.commit}^`, new: source.commit! };

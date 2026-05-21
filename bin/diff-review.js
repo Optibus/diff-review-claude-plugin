@@ -72,17 +72,17 @@ async function getDiff(opts, cwd) {
   if (opts.commit) {
     return git(["diff", ...common, `${opts.commit}^!`], cwd);
   }
-  if (opts.unstagedOnly) {
+  if (opts.uncommittedOnly) {
     return git(["diff", ...common, "HEAD"], cwd);
   }
   if (opts.range) {
-    if (opts.includeUnstaged) {
+    if (opts.includeUncommitted) {
       const base = opts.range.split(/\.\.\.?/)[0];
       return git(["diff", ...common, base], cwd);
     }
     return git(["diff", ...common, opts.range], cwd);
   }
-  throw new GitError("getDiff: must provide range, commit, or unstagedOnly");
+  throw new GitError("getDiff: must provide range, commit, or uncommittedOnly");
 }
 async function readFileAtRef(ref, path3, cwd) {
   try {
@@ -96,10 +96,10 @@ async function changedFiles(opts, cwd) {
   let args;
   if (opts.commit) {
     args = ["diff", ...common, `${opts.commit}^!`];
-  } else if (opts.unstagedOnly) {
+  } else if (opts.uncommittedOnly) {
     args = ["diff", ...common, "HEAD"];
   } else if (opts.range) {
-    if (opts.includeUnstaged) {
+    if (opts.includeUncommitted) {
       const base = opts.range.split(/\.\.\.?/)[0];
       args = ["diff", ...common, base];
     } else {
@@ -343,22 +343,22 @@ async function listDiffSources(cwd) {
   const head = await currentBranch(cwd);
   if (base) {
     sources.push({
+      id: "branch-with-uncommitted",
+      label: `${head} vs ${base} (incl. uncommitted)`,
+      kind: "branch-vs-base-with-uncommitted",
+      base
+    });
+    sources.push({
       id: "branch",
       label: `${head} vs ${base}`,
       kind: "branch-vs-base",
       base
     });
-    sources.push({
-      id: "branch-with-unstaged",
-      label: `${head} vs ${base} (incl. unstaged)`,
-      kind: "branch-vs-base-with-unstaged",
-      base
-    });
   }
   sources.push({
-    id: "unstaged",
-    label: "Unstaged changes only",
-    kind: "unstaged"
+    id: "uncommitted",
+    label: "Uncommitted changes only",
+    kind: "uncommitted"
   });
   if (base) {
     try {
@@ -380,10 +380,10 @@ function sourceToDiffOpts(source) {
   switch (source.kind) {
     case "branch-vs-base":
       return { range: `${source.base}..HEAD` };
-    case "branch-vs-base-with-unstaged":
-      return { range: `${source.base}..HEAD`, includeUnstaged: true };
-    case "unstaged":
-      return { unstagedOnly: true };
+    case "branch-vs-base-with-uncommitted":
+      return { range: `${source.base}..HEAD`, includeUncommitted: true };
+    case "uncommitted":
+      return { uncommittedOnly: true };
     case "commit":
       return { commit: source.commit };
   }
@@ -392,9 +392,9 @@ function sourceToRefs(source) {
   switch (source.kind) {
     case "branch-vs-base":
       return { old: source.base, new: "HEAD" };
-    case "branch-vs-base-with-unstaged":
+    case "branch-vs-base-with-uncommitted":
       return { old: source.base, new: "worktree" };
-    case "unstaged":
+    case "uncommitted":
       return { old: "HEAD", new: "worktree" };
     case "commit":
       return { old: `${source.commit}^`, new: source.commit };

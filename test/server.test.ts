@@ -102,16 +102,18 @@ test("API accepts token via query and via X-Token header", async () => {
   } finally { await h.close(); }
 });
 
-test("GET /api/diff-sources includes branch and unstaged options", async () => {
+test("GET /api/diff-sources includes branch and uncommitted options, default first", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/diff-sources");
     const body = await r.json() as { sources: { id: string; kind: string }[] };
     const ids = body.sources.map((s) => s.id);
     assert.ok(ids.includes("branch"));
-    assert.ok(ids.includes("branch-with-unstaged"));
-    assert.ok(ids.includes("unstaged"));
+    assert.ok(ids.includes("branch-with-uncommitted"));
+    assert.ok(ids.includes("uncommitted"));
     assert.ok(ids.some((id) => id.startsWith("commit:")));
+    // Default (first) should be the full branch diff including uncommitted work.
+    assert.equal(body.sources[0].id, "branch-with-uncommitted");
   } finally { await h.close(); }
 });
 
@@ -127,10 +129,10 @@ test("GET /api/diff?source=branch returns committed diff only", async () => {
   } finally { await h.close(); }
 });
 
-test("GET /api/diff?source=unstaged returns working tree only", async () => {
+test("GET /api/diff?source=uncommitted returns working tree only", async () => {
   const h = await startHarness();
   try {
-    const r = await api(h, "/api/diff?source=unstaged");
+    const r = await api(h, "/api/diff?source=uncommitted");
     const body = await r.json() as { diff: string };
     assert.match(body.diff, /epsilon/);
   } finally { await h.close(); }

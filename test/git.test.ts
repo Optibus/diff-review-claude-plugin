@@ -92,16 +92,16 @@ test("getDiff range returns committed diff (no unstaged)", async () => {
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-test("getDiff with includeUnstaged includes working tree changes", async () => {
+test("getDiff with includeUncommitted includes working tree changes", async () => {
   const dir = await makeFixtureRepo();
-  const out = await getDiff({ range: "main..feature", includeUnstaged: true }, dir);
+  const out = await getDiff({ range: "main..feature", includeUncommitted: true }, dir);
   assert.match(out, /line5/);
   await fs.rm(dir, { recursive: true, force: true });
 });
 
-test("getDiff unstagedOnly returns only working tree diff", async () => {
+test("getDiff uncommittedOnly returns only working tree diff", async () => {
   const dir = await makeFixtureRepo();
-  const out = await getDiff({ unstagedOnly: true }, dir);
+  const out = await getDiff({ uncommittedOnly: true }, dir);
   assert.match(out, /line5/);
   // The committed change from main..feature should still show because unstaged
   // compares working tree to HEAD; HEAD has line4 already.

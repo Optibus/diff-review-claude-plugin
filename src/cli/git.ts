@@ -86,14 +86,20 @@ export async function commitsBetween(base: string, head: string, cwd: string): P
 }
 
 export interface DiffOptions {
-  range?: string;       // e.g. "main..HEAD" or "main...HEAD"
-  includeUnstaged?: boolean;
-  unstagedOnly?: boolean;
-  commit?: string;      // single commit -> show that commit's diff
+  range?: string;             // e.g. "main..HEAD" or "main...HEAD"
+  /** Layer uncommitted (staged + unstaged) changes on top of the committed range. */
+  includeUncommitted?: boolean;
+  /** Just `git diff HEAD` — everything not yet committed, staged or not. */
+  uncommittedOnly?: boolean;
+  commit?: string;            // single commit -> show that commit's diff
 }
 
 /**
  * Return raw `git diff` output for the given source. Browser-side parser handles structure.
+ *
+ * Note: "uncommitted" means working-tree changes vs HEAD — this naturally
+ * includes both staged and unstaged work (`git diff HEAD` walks the whole
+ * working tree, ignoring the index state).
  */
 export async function getDiff(opts: DiffOptions, cwd: string): Promise<string> {
   const common = ["--no-color", "--find-renames", "--no-ext-diff"];
@@ -101,18 +107,20 @@ export async function getDiff(opts: DiffOptions, cwd: string): Promise<string> {
     // `git diff <sha>^!` is shorthand for `git diff <sha>^ <sha>`.
     return git(["diff", ...common, `${opts.commit}^!`], cwd);
   }
-  if (opts.unstagedOnly) {
+  if (opts.uncommittedOnly) {
     return git(["diff", ...common, "HEAD"], cwd);
   }
   if (opts.range) {
-    if (opts.includeUnstaged) {
-      // Combine base..HEAD (committed diff) with HEAD vs working tree (unstaged).
+    if (opts.includeUncommitted) {
+      // `git diff <base>` compares the working tree (staged + unstaged) to the
+      // base commit, naturally producing the committed range plus any local
+      // uncommitted work.
       const base = opts.range.split(/\.\.\.?/)[0];
       return git(["diff", ...common, base], cwd);
     }
     return git(["diff", ...common, opts.range], cwd);
   }
-  throw new GitError("getDiff: must provide range, commit, or unstagedOnly");
+  throw new GitError("getDiff: must provide range, commit, or uncommittedOnly");
 }
 
 /**
@@ -135,10 +143,10 @@ export async function changedFiles(opts: DiffOptions, cwd: string): Promise<stri
   let args: string[];
   if (opts.commit) {
     args = ["diff", ...common, `${opts.commit}^!`];
-  } else if (opts.unstagedOnly) {
+  } else if (opts.uncommittedOnly) {
     args = ["diff", ...common, "HEAD"];
   } else if (opts.range) {
-    if (opts.includeUnstaged) {
+    if (opts.includeUncommitted) {
       const base = opts.range.split(/\.\.\.?/)[0];
       args = ["diff", ...common, base];
     } else {

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as git from "./git.js";
-import { acquireLock, openBrowser, releaseLock, LockError } from "./lifecycle.js";
+import { acquireLock, openBrowser, readInstance, releaseLock, writeInstance, LockError } from "./lifecycle.js";
 import { createServer } from "./server.js";
 import { clearDrafts, loadDrafts, repoFingerprint } from "./storage.js";
 import { formatReview } from "./output.js";
@@ -92,6 +92,19 @@ async function main(): Promise<number> {
     await acquireLock(fingerprint);
   } catch (e) {
     if (e instanceof LockError) {
+      // Another instance is alive. Treat this as a "reconnect" rather than a
+      // hard error: open the user's browser at the existing instance's URL so
+      // they pick up where they left off.
+      const existing = await readInstance(fingerprint);
+      if (existing) {
+        const url = `http://127.0.0.1:${existing.port}/?t=${existing.token}`;
+        process.stderr.write(
+          `diff-review: another review is already running (PID ${existing.pid}). Reopening at ${url}\n`,
+        );
+        if (!args.noBrowser) openBrowser(url);
+        process.stdout.write(`(reconnected — review still open in your browser)\n`);
+        return 0;
+      }
       process.stderr.write(`diff-review: ${e.message}\n`);
       return 1;
     }
@@ -110,6 +123,12 @@ async function main(): Promise<number> {
     token,
     port: args.port || undefined,
     onResolve: (r) => submissionResolver?.(r),
+  });
+
+  await writeInstance(fingerprint, {
+    pid: process.pid,
+    port: server.port,
+    token,
   });
 
   const sigintHandler = () => { submissionResolver?.({ cancelled: true }); };

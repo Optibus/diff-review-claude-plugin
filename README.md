@@ -265,7 +265,9 @@ diff-review [diff-source]
 
 **Browser didn't open.** Most likely a non-default browser handler. Copy the `open http://127.0.0.1:...` URL from stderr and paste it manually. Or use `--no-browser` and skip the auto-open entirely.
 
-**"another diff-review is already running (PID X)".** That PID is alive and holds the lock. Submit or discard in the other session, or kill the process. Stale locks (PID no longer alive) are reaped automatically.
+**Already running.** Re-invoking `/diff-review:start` while another session is alive for the same repo doesn't error — it reopens the browser at the existing instance's URL so you pick up where you left off. The CLI prints `(reconnected — review still open in your browser)` and Claude treats it as a no-op.
+
+If you want a fresh session anyway, submit or discard the existing one (or `kill <PID>`). Stale locks from dead PIDs are reaped automatically on the next launch.
 
 **"not a git working tree".** Run inside a git repository, or pass `--cwd <path>` to a known one.
 

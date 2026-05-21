@@ -20,6 +20,10 @@ export function lockPath(fingerprint: string): string {
   return path.join(storageDir(fingerprint), "lock");
 }
 
+export function instancePath(fingerprint: string): string {
+  return path.join(storageDir(fingerprint), "instance.json");
+}
+
 function emptyStore(): DraftStore {
   return { schemaVersion: 1, comments: {}, summary: "" };
 }

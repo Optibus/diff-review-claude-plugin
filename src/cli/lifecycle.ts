@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { ensureStorageDir, lockPath } from "./storage.js";
+import { ensureStorageDir, instancePath, lockPath } from "./storage.js";
+
+export interface InstanceInfo {
+  pid: number;
+  port: number;
+  token: string;
+}
 
 export class LockError extends Error {
   constructor(message: string, public pid?: number) {
@@ -50,6 +56,36 @@ export async function releaseLock(fingerprint: string): Promise<void> {
   } catch (e: unknown) {
     const err = e as { code?: string };
     if (err.code !== "ENOENT") throw e;
+  }
+  // Best-effort: also clear the instance metadata file.
+  try {
+    await fs.unlink(instancePath(fingerprint));
+  } catch (e: unknown) {
+    const err = e as { code?: string };
+    if (err.code !== "ENOENT") throw e;
+  }
+}
+
+export async function writeInstance(fingerprint: string, info: InstanceInfo): Promise<void> {
+  await ensureStorageDir(fingerprint);
+  await fs.writeFile(instancePath(fingerprint), JSON.stringify(info), "utf8");
+}
+
+export async function readInstance(fingerprint: string): Promise<InstanceInfo | null> {
+  try {
+    const raw = await fs.readFile(instancePath(fingerprint), "utf8");
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed.pid === "number" &&
+      typeof parsed.port === "number" &&
+      typeof parsed.token === "string"
+    ) {
+      return parsed as InstanceInfo;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

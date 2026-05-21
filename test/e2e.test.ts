@@ -97,25 +97,29 @@ test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts 
   } finally { await cleanup(dir, fp); }
 });
 
-test("e2e: lock prevents concurrent runs", async () => {
+test("e2e: second invocation while one is running reconnects to the existing session", async () => {
   const { dir, fp } = await makeRepo();
   try {
-    // Start a long-running instance (no auto-submit; will block on browser).
     const child = spawn(process.execPath, [BIN, "--no-browser"], {
       cwd: dir,
       env: { ...process.env },
     });
-    // Wait for the server to start (it logs the URL to stderr).
+    let firstUrl = "";
     const ready = new Promise<void>((resolve) => {
       child.stderr.on("data", (b) => {
-        if (String(b).includes("open http://")) resolve();
+        const m = String(b).match(/open (http:\/\/127\.0\.0\.1:\d+\/\?t=[a-f0-9]+)/);
+        if (m) { firstUrl = m[1]; resolve(); }
       });
     });
     await ready;
 
     const r = await runBinary(["--no-browser"], dir);
-    assert.equal(r.code, 1);
-    assert.match(r.stderr, /already running/);
+    // Reconnect exits 0 with a sentinel on stdout so Claude treats it as a no-op.
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /^\(reconnected/);
+    // Stderr points at the same URL the first instance is serving.
+    assert.ok(firstUrl);
+    assert.ok(r.stderr.includes(firstUrl), `expected stderr to mention ${firstUrl}, got: ${r.stderr}`);
 
     child.kill("SIGINT");
     await new Promise((res) => child.on("close", res));

@@ -133,6 +133,9 @@ function draftsPath(fingerprint) {
 function lockPath(fingerprint) {
   return path.join(storageDir(fingerprint), "lock");
 }
+function instancePath(fingerprint) {
+  return path.join(storageDir(fingerprint), "instance.json");
+}
 function emptyStore() {
   return { schemaVersion: 1, comments: {}, summary: "" };
 }
@@ -218,6 +221,28 @@ async function releaseLock(fingerprint) {
   } catch (e) {
     const err = e;
     if (err.code !== "ENOENT") throw e;
+  }
+  try {
+    await fs2.unlink(instancePath(fingerprint));
+  } catch (e) {
+    const err = e;
+    if (err.code !== "ENOENT") throw e;
+  }
+}
+async function writeInstance(fingerprint, info) {
+  await ensureStorageDir(fingerprint);
+  await fs2.writeFile(instancePath(fingerprint), JSON.stringify(info), "utf8");
+}
+async function readInstance(fingerprint) {
+  try {
+    const raw = await fs2.readFile(instancePath(fingerprint), "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.pid === "number" && typeof parsed.port === "number" && typeof parsed.token === "string") {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 function openBrowser(url) {
@@ -778,6 +803,18 @@ async function main() {
     await acquireLock(fingerprint);
   } catch (e) {
     if (e instanceof LockError) {
+      const existing = await readInstance(fingerprint);
+      if (existing) {
+        const url = `http://127.0.0.1:${existing.port}/?t=${existing.token}`;
+        process.stderr.write(
+          `diff-review: another review is already running (PID ${existing.pid}). Reopening at ${url}
+`
+        );
+        if (!args.noBrowser) openBrowser(url);
+        process.stdout.write(`(reconnected \u2014 review still open in your browser)
+`);
+        return 0;
+      }
       process.stderr.write(`diff-review: ${e.message}
 `);
       return 1;
@@ -796,6 +833,11 @@ async function main() {
     token,
     port: args.port || void 0,
     onResolve: (r) => submissionResolver?.(r)
+  });
+  await writeInstance(fingerprint, {
+    pid: process.pid,
+    port: server.port,
+    token
   });
   const sigintHandler = () => {
     submissionResolver?.({ cancelled: true });

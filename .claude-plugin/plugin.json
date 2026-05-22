@@ -1,7 +1,7 @@
 {
   "name": "diff-review",
   "description": "Open a GitHub-style diff GUI in the browser to review Claude's changes, then return structured feedback to the conversation.",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "author": {
     "name": "Adam Mooney"
   },

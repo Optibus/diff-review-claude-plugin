@@ -24,8 +24,8 @@ This is a Claude Code plugin. Installation is two steps: register the marketplac
 Useful for trying it before publishing, or for hacking on it.
 
 ```bash
-git clone <this-repo-url> diff-review
-cd diff-review
+git clone https://github.com/Optibus/diff-review-claude-plugin.git
+cd diff-review-claude-plugin
 
 claude plugin marketplace add .
 claude plugin install diff-review@diff-review-marketplace
@@ -33,15 +33,10 @@ claude plugin install diff-review@diff-review-marketplace
 
 That's it — `bin/diff-review.js` is pre-built and committed, so no `npm install` is needed to use the plugin.
 
-### From a remote git repo
-
-Once the repo is hosted on GitHub (or any git provider Claude Code can clone):
+### From the remote git repo
 
 ```bash
-claude plugin marketplace add github:<owner>/<repo>
-# or, for any git URL:
-claude plugin marketplace add https://github.com/<owner>/<repo>.git
-
+claude plugin marketplace add Optibus/diff-review-claude-plugin
 claude plugin install diff-review@diff-review-marketplace
 ```
 

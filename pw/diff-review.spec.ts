@@ -12,7 +12,9 @@ test.describe("diff-review UI", () => {
     await expect(app.locator(".filetree")).toContainText("greeting.py");
     await expect(app.locator(".filediff").first()).toContainText("def greet");
     await expect(app.locator(".topbar__count")).toContainText("0 comments");
-    await expect(app.getByRole("button", { name: "Submit review" })).toBeDisabled();
+    // Open the submit popover and confirm the inner Submit button is gated.
+    await app.getByRole("button", { name: "Submit review" }).click();
+    await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeDisabled();
   });
 
   test("single-line comment: click → type → save → counter increments", async ({ app }) => {
@@ -26,7 +28,10 @@ test.describe("diff-review UI", () => {
 
     await expect(app.locator(".topbar__count")).toContainText("1 comment");
     await expect(app.locator(".thread__body")).toContainText("Consider a docstring here.");
-    await expect(app.getByRole("button", { name: "Submit review" })).toBeEnabled();
+    // Open submit popover and confirm inner Submit is enabled now there's a comment.
+    await app.getByRole("button", { name: "Submit review" }).click();
+    await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeEnabled();
+    await app.keyboard.press("Escape");
     // File tree badge appears.
     await expect(app.locator(".filetree__count").first()).toHaveText("1");
   });
@@ -64,15 +69,17 @@ test.describe("diff-review UI", () => {
     await app.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(app.locator(".thread")).toHaveCount(0);
     await expect(app.locator(".topbar__count")).toContainText("0 comments");
-    await expect(app.getByRole("button", { name: "Submit review" })).toBeDisabled();
+    await app.getByRole("button", { name: "Submit review" }).click();
+    await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeDisabled();
   });
 
   test("overall summary auto-saves and enables submit on its own", async ({ app }) => {
-    await expect(app.getByRole("button", { name: "Submit review" })).toBeDisabled();
+    await app.getByRole("button", { name: "Submit review" }).click();
+    await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeDisabled();
     await app.locator(".summary__textarea").fill("Looks fine, ship it.");
     await app.locator(".summary__textarea").blur();
     await expect(app.locator(".summary__saved")).toContainText("Saved");
-    await expect(app.getByRole("button", { name: "Submit review" })).toBeEnabled();
+    await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeEnabled();
   });
 
   test("split view toggle reorganizes the diff", async ({ app }) => {
@@ -137,11 +144,12 @@ test.describe("diff-review UI", () => {
     await app.locator(".thread__textarea").fill("docstring please");
     await app.getByRole("button", { name: "Save", exact: true }).click();
 
+    await app.getByRole("button", { name: "Submit review" }).click();
     await app.locator(".summary__textarea").fill("Nice overall.");
     await app.locator(".summary__textarea").blur();
     await expect(app.locator(".summary__saved")).toContainText("Saved");
 
-    await app.getByRole("button", { name: "Submit review" }).click();
+    await app.getByRole("button", { name: "Submit", exact: true }).click();
     await expect(app.locator(".bigmsg")).toContainText("Review submitted");
 
     const { code, stdout } = await bin.exit;
@@ -198,9 +206,11 @@ test("clear all comments wipes every saved comment after confirmation but keeps 
   await app.locator(".thread__textarea").fill("second comment");
   await app.getByRole("button", { name: "Save", exact: true }).click();
 
+  await app.getByRole("button", { name: "Submit review" }).click();
   await app.locator(".summary__textarea").fill("Keep me");
   await app.locator(".summary__textarea").blur();
   await expect(app.locator(".summary__saved")).toContainText("Saved");
+  await app.keyboard.press("Escape");
   await expect(app.locator(".topbar__count")).toContainText("2 comments");
 
   // Click Clear all → confirm bar appears.
@@ -217,9 +227,10 @@ test("clear all comments wipes every saved comment after confirmation but keeps 
   await expect(app.locator(".topbar__count")).toContainText("0 comments");
   await expect(app.locator(".thread")).toHaveCount(0);
   // Summary survives.
+  await app.getByRole("button", { name: "Submit review" }).click();
   await expect(app.locator(".summary__textarea")).toHaveValue("Keep me");
   // Submit stays enabled because summary still has content.
-  await expect(app.getByRole("button", { name: "Submit review" })).toBeEnabled();
+  await expect(app.getByRole("button", { name: "Submit", exact: true })).toBeEnabled();
 });
 
 test("opening the review in a second tab supersedes the first", async ({ bin, browser }) => {

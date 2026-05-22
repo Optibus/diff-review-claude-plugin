@@ -5,7 +5,7 @@ import { api, openEventStream } from "./api";
 import { DiffSourcePicker } from "./DiffSourcePicker";
 import { FileTree } from "./FileTree";
 import { DiffView } from "./DiffView";
-import { SummaryBox } from "./SummaryBox";
+import { SubmitPopover } from "./SubmitPopover";
 import type { DiffSource, Draft, DraftStore } from "../cli/types";
 
 function snippetFor(
@@ -40,6 +40,7 @@ export function App() {
   const [state, setState] = useState<AppState>({ kind: "loading" });
   const [currentSource, setCurrentSource] = useState<string>("");
   const [diffText, setDiffText] = useState<string>("");
+  const [fileAttrs, setFileAttrs] = useState<Record<string, Record<string, string>>>({});
   const [files, setFiles] = useState<FileData[]>([]);
   const [drafts, setDrafts] = useState<DraftStore>({ schemaVersion: 1, comments: {}, summary: "" });
   const [viewType, setViewType] = useState<ViewType>("unified");
@@ -79,8 +80,9 @@ export function App() {
     if (!currentSource) return;
     (async () => {
       try {
-        const { diff } = await api.diff(currentSource);
+        const { diff, attrs } = await api.diff(currentSource);
         setDiffText(diff);
+        setFileAttrs(attrs ?? {});
       } catch (e: unknown) {
         setState({ kind: "error", message: (e as Error).message });
       }
@@ -284,9 +286,14 @@ export function App() {
             Clear all comments
           </button>
           <button onClick={onDiscardClick} disabled={busy}>Discard</button>
-          <button className="primary" onClick={onSubmit} disabled={busy || !canSubmit} title={canSubmit ? "" : "Add a comment or summary first"}>
-            Submit review
-          </button>
+          <SubmitPopover
+            initialSummary={drafts.summary}
+            onSaveSummary={onSaveSummary}
+            onSubmit={onSubmit}
+            busy={busy}
+            canSubmit={canSubmit}
+            hasSummary={summaryHasContent}
+          />
         </div>
       </header>
       {confirmingDiscard && (
@@ -319,6 +326,7 @@ export function App() {
             drafts={draftList}
             sourceId={currentSource}
             viewType={viewType}
+            fileAttrs={fileAttrs}
             onParsed={setFiles}
             onStartComment={onStartComment}
             onSave={onSaveDraft}
@@ -326,7 +334,6 @@ export function App() {
             registerFileAnchor={(key, el) => { fileRefs.current[key] = el; }}
           />
         </div>
-        <SummaryBox initialValue={drafts.summary} onSave={onSaveSummary} />
       </main>
     </div>
   );

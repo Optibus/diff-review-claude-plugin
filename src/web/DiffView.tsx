@@ -21,11 +21,20 @@ interface Props {
   drafts: Draft[];
   sourceId: string;
   viewType: ViewType;
+  fileAttrs?: Record<string, Record<string, string>>;
   onParsed?: (files: FileData[]) => void;
   onStartComment: (file: string, startLine: number, endLine: number) => void;
   onSave: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   registerFileAnchor: (key: string, el: HTMLElement | null) => void;
+}
+
+function isGenerated(attrs: Record<string, string> | undefined): boolean {
+  // gitattributes can express this as `linguist-generated` (set), or as
+  // `linguist-generated=true`. Treat both as generated.
+  if (!attrs) return false;
+  const v = attrs["linguist-generated"];
+  return v === "set" || v === "true";
 }
 
 function fileKey(f: FileData): string {
@@ -41,6 +50,7 @@ export function DiffView({
   drafts,
   sourceId,
   viewType,
+  fileAttrs,
   onParsed,
   onStartComment,
   onSave,
@@ -71,6 +81,9 @@ export function DiffView({
     <div className="diffview">
       {files.map((file) => {
         const path = fileKey(file);
+        const generated =
+          isGenerated(fileAttrs?.[file.newPath ?? ""]) ||
+          isGenerated(fileAttrs?.[file.oldPath ?? ""]);
         return (
           <FileDiffPanel
             key={`${sourceId}:${path}`}
@@ -78,6 +91,7 @@ export function DiffView({
             path={path}
             sourceId={sourceId}
             viewType={viewType}
+            generated={generated}
             drafts={draftsByFile.get(path) ?? []}
             onStartComment={onStartComment}
             onSave={onSave}
@@ -95,6 +109,7 @@ interface PanelProps {
   path: string;
   sourceId: string;
   viewType: ViewType;
+  generated: boolean;
   drafts: Draft[];
   onStartComment: (file: string, startLine: number, endLine: number) => void;
   onSave: (id: string, body: string) => Promise<void>;
@@ -109,6 +124,7 @@ function FileDiffPanel({
   path,
   sourceId,
   viewType,
+  generated,
   drafts: fileDrafts,
   onStartComment,
   onSave,
@@ -118,11 +134,20 @@ function FileDiffPanel({
   const [oldSource, setOldSource] = useState<string | null>(null);
   const [oldSourceStatus, setOldSourceStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [pending, setPending] = useState<PendingAnchor | null>(null);
+  const [expandedGenerated, setExpandedGenerated] = useState(false);
   const [hunks, expandRange] = useSourceExpansion(file.hunks, oldSource);
 
   const tokens: HunkTokens | null = useMemo(() => {
     const lang = languageFor(path);
     if (!lang) return null;
+    // Prism tokenizes each line synchronously. Minified/generated files
+    // routinely have lines >100KB which freezes the main thread; skip
+    // highlighting for those — the diff still renders, just unstyled.
+    for (const h of hunks) {
+      for (const c of h.changes) {
+        if (c.content.length > 5000) return null;
+      }
+    }
     try {
       return tokenize(hunks, { highlight: true, refractor, language: lang });
     } catch {
@@ -255,18 +280,31 @@ function FileDiffPanel({
     : null;
   const diffType = (file.type ?? "modify") as DiffType;
 
+  const showCollapsed = generated && !expandedGenerated;
+
   return (
     <section className="filediff" ref={(el) => registerFileAnchor(path, el)}>
       <header className="filediff__header">
         <code>{path}</code>
-        <span className="filediff__type">{file.type}</span>
+        <span className="filediff__type">
+          {generated && <span className="filediff__generated" title="Marked linguist-generated in .gitattributes">generated</span>}
+          {file.type}
+        </span>
       </header>
       {inFileOrphans.length > 0 && (
         <div className="filediff__orphans">
           <strong>{inFileOrphans.length} comment(s) from other diff sources — switch source to see them.</strong>
         </div>
       )}
-      {hunks.length === 0 ? (
+      {showCollapsed ? (
+        <button
+          type="button"
+          className="filediff__collapsed"
+          onClick={() => setExpandedGenerated(true)}
+        >
+          Generated file — show diff
+        </button>
+      ) : hunks.length === 0 ? (
         <div className="filediff__empty">(no textual diff)</div>
       ) : (
         <Diff

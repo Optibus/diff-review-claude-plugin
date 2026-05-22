@@ -1,7 +1,23 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+
+function gitWithStdin(args: string[], stdin: string, cwd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", args, { cwd });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (b: Buffer) => { stdout += b.toString(); });
+    child.stderr.on("data", (b: Buffer) => { stderr += b.toString(); });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve(stdout);
+      else reject(new GitError(`git ${args[0]} exited ${code}`, stderr));
+    });
+    child.stdin.end(stdin);
+  });
+}
 
 export class GitError extends Error {
   constructor(message: string, public stderr?: string) {
@@ -142,6 +158,37 @@ export async function readFileAtRef(ref: string, path: string, cwd: string): Pro
   } catch {
     return null;
   }
+}
+
+/**
+ * Look up gitattributes for one or more paths. Returns `{ path: { attr: value } }`.
+ * `value` is `"set"`, `"unset"`, `"unspecified"`, or the literal string value
+ * the user set (e.g. `linguist-generated=true` → `"true"`).
+ *
+ * Uses a single `git check-attr --stdin` invocation so the cost is one git
+ * process regardless of how many paths we look up.
+ */
+export async function getAttributes(
+  paths: string[],
+  attrs: string[],
+  cwd: string,
+): Promise<Record<string, Record<string, string>>> {
+  const result: Record<string, Record<string, string>> = {};
+  if (paths.length === 0 || attrs.length === 0) return result;
+  const stdout = await gitWithStdin(
+    ["check-attr", "--stdin", "-z", ...attrs],
+    paths.join("\0") + "\0",
+    cwd,
+  );
+  // -z format: <path>\0<attr>\0<value>\0  (one triple per record)
+  const tokens = stdout.split("\0");
+  for (let i = 0; i + 2 < tokens.length; i += 3) {
+    const [path, attr, value] = [tokens[i], tokens[i + 1], tokens[i + 2]];
+    if (!path) continue;
+    if (!result[path]) result[path] = {};
+    result[path][attr] = value;
+  }
+  return result;
 }
 
 /**

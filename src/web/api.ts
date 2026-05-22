@@ -29,7 +29,12 @@ export const api = {
   context: () => jsonReq<{ branch: string; root: string }>("/api/context"),
   sources: () => jsonReq<{ sources: DiffSource[] }>("/api/diff-sources"),
   diff: (sourceId: string) =>
-    jsonReq<{ diff: string; files: string[]; sourceId: string }>(`/api/diff?source=${encodeURIComponent(sourceId)}`),
+    jsonReq<{
+      diff: string;
+      files: string[];
+      attrs: Record<string, Record<string, string>>;
+      sourceId: string;
+    }>(`/api/diff?source=${encodeURIComponent(sourceId)}`),
   fileAt: (sourceId: string, filePath: string, side: "old" | "new") =>
     jsonReq<{ content: string | null }>(
       `/api/source?source=${encodeURIComponent(sourceId)}&path=${encodeURIComponent(filePath)}&side=${side}`,

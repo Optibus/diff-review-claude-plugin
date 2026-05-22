@@ -281,7 +281,8 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         const opts = await sourceToDiffOpts(source, cwd);
         const diff = await git.getDiff(opts, cwd);
         const files = await git.changedFiles(opts, cwd);
-        sendJson(res, 200, { diff, files, sourceId: source.id });
+        const attrs = await git.getAttributes(files, ["linguist-generated"], cwd);
+        sendJson(res, 200, { diff, files, attrs, sourceId: source.id });
         return;
       }
 

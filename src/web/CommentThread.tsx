@@ -17,11 +17,17 @@ export function CommentThread({ draft, onSave, onDelete, initiallyEditing = fals
     draft.startLine === draft.endLine
       ? `Line ${draft.startLine}`
       : `Lines ${draft.startLine}–${draft.endLine}`;
+  const isUnstartedSingleLine = draft.body === "" && draft.startLine === draft.endLine;
 
   if (editing) {
     return (
       <div className="thread thread--editing">
-        <div className="thread__header">{range}</div>
+        <div className="thread__header">
+          {range}
+          {isUnstartedSingleLine && (
+            <span className="thread__hint"> — Shift+click another line to extend</span>
+          )}
+        </div>
         <textarea
           className="thread__textarea"
           value={body}

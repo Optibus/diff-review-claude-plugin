@@ -133,8 +133,24 @@ function FileDiffPanel({
   const [oldSource, setOldSource] = useState<string | null>(null);
   const [oldSourceStatus, setOldSourceStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [pending, setPending] = useState<PendingAnchor | null>(null);
+  const [hoverLine, setHoverLine] = useState<number | null>(null);
+  const [shiftHeld, setShiftHeld] = useState(false);
   const [expandedGenerated, setExpandedGenerated] = useState(false);
   const [hunks, expandRange] = useSourceExpansion(file.hunks, oldSource);
+
+  // Track shift only while there's a pending anchor — that's the only time
+  // the user might be about to extend a selection.
+  useEffect(() => {
+    if (!pending) { setShiftHeld(false); return; }
+    const onDown = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
+    const onUp = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+    };
+  }, [pending]);
 
   const tokens: HunkTokens | null = useMemo(() => {
     const lang = languageFor(path);
@@ -272,6 +288,46 @@ function FileDiffPanel({
     }
   };
 
+  const handleGutterEnter = (args: { change: ChangeData | null }) => {
+    if (!args.change) return;
+    const lineNo = computeNewLineNumber(args.change);
+    if (lineNo < 0) return;
+    setHoverLine(lineNo);
+  };
+
+  // Highlight the anchor (and, while shift is held, the preview range to the
+  // current hover) plus any draft still being composed (body === ""). The
+  // library applies `diff-{gutter,code}-selected` classes for these keys.
+  const selectedChanges = useMemo(() => {
+    const ranges: Array<[number, number]> = [];
+    if (pending) {
+      let s = pending.line;
+      let e = pending.line;
+      if (shiftHeld && hoverLine !== null) {
+        s = Math.min(pending.line, hoverLine);
+        e = Math.max(pending.line, hoverLine);
+      }
+      ranges.push([s, e]);
+    }
+    for (const d of fileDrafts) {
+      if (d.sourceId !== sourceId) continue;
+      if (d.body !== "") continue;
+      ranges.push([d.startLine, d.endLine]);
+    }
+    if (ranges.length === 0) return [];
+    const keys: string[] = [];
+    for (const h of hunks) {
+      for (const c of h.changes) {
+        const ln = computeNewLineNumber(c);
+        if (ln < 0) continue;
+        for (const [s, e] of ranges) {
+          if (ln >= s && ln <= e) { keys.push(getChangeKey(c)); break; }
+        }
+      }
+    }
+    return keys;
+  }, [pending, shiftHeld, hoverLine, hunks, fileDrafts, sourceId]);
+
   // Strip a single trailing newline before counting lines so a file ending
   // in "\n" reports its true line count (not +1 for the empty tail element).
   const oldSourceLineCount = oldSource
@@ -282,7 +338,11 @@ function FileDiffPanel({
   const showCollapsed = generated && !expandedGenerated;
 
   return (
-    <section className="filediff" ref={(el) => registerFileAnchor(path, el)}>
+    <section
+      className="filediff"
+      ref={(el) => registerFileAnchor(path, el)}
+      onMouseLeave={() => setHoverLine(null)}
+    >
       <header className="filediff__header">
         <code>{path}</code>
         <span className="filediff__type">
@@ -312,7 +372,8 @@ function FileDiffPanel({
           hunks={hunks}
           widgets={widgets}
           tokens={tokens}
-          gutterEvents={{ onClick: handleGutterClick }}
+          selectedChanges={selectedChanges}
+          gutterEvents={{ onClick: handleGutterClick, onMouseEnter: handleGutterEnter }}
         >
           {(visibleHunks) => renderHunksWithExpand(
             visibleHunks,

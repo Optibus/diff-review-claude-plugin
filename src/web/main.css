@@ -266,6 +266,18 @@ button.primary:disabled { background: #94d3a2; border-color: #94d3a2; }
 .diff-gutter { cursor: pointer; }
 .diff-gutter:hover { background: #ddf4ff; }
 
+/* Selection feedback for the comment anchor + shift-click range preview.
+   `selectedChanges` is computed in DiffView to cover the pending anchor,
+   the anchor→hover preview while shift is held, and any draft still being
+   composed (body === ""). */
+.diff-gutter-selected,
+.diff-gutter-selected:hover {
+  background: #79c0ff;
+  color: #0a3069;
+  font-weight: 600;
+}
+.diff-code-selected { background: rgba(31, 111, 235, 0.12); }
+
 .thread__container {
   padding: 8px 12px;
   background: var(--bg-soft);
@@ -280,6 +292,7 @@ button.primary:disabled { background: #94d3a2; border-color: #94d3a2; }
   margin: 4px 0;
 }
 .thread__header { font-size: 12px; color: var(--text-soft); margin-bottom: 6px; font-weight: 600; }
+.thread__hint { font-weight: 400; opacity: 0.75; }
 .thread__body { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 13px; margin-bottom: 8px; }
 .thread__textarea {
   width: 100%;

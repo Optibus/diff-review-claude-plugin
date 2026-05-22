@@ -129,6 +129,61 @@ test("GET /api/diff?source=branch returns committed diff only", async () => {
   } finally { await h.close(); }
 });
 
+test("GET /api/diff against an advanced base excludes commits that landed on base after divergence (merge-base semantics)", async () => {
+  // Build a repo where main moves forward after the feature branch
+  // diverged. The branch diff should NOT include that drift.
+  const dir = await fs.mkdtemp("/tmp/diff-review-mb-");
+  const g = (...args: string[]) => exec("git", args, { cwd: dir });
+  try {
+    await g("init", "-q", "-b", "main");
+    await g("config", "user.email", "t@t");
+    await g("config", "user.name", "T");
+    await fs.writeFile(path.join(dir, "shared.txt"), "v1\n");
+    await g("add", ".");
+    await g("commit", "-q", "-m", "shared v1");
+
+    // Feature branches off here.
+    await g("checkout", "-q", "-b", "feat");
+    await fs.writeFile(path.join(dir, "feat.txt"), "feature\n");
+    await g("add", ".");
+    await g("commit", "-q", "-m", "feat work");
+
+    // Main advances independently with a completely separate file.
+    await g("checkout", "-q", "main");
+    await fs.writeFile(path.join(dir, "main-only.txt"), "added on main later\n");
+    await g("add", ".");
+    await g("commit", "-q", "-m", "main advances");
+
+    // Back on feat — main now has commits feat doesn't.
+    await g("checkout", "-q", "feat");
+
+    const absGitDir = (await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir })).stdout.trim();
+    const fingerprint = repoFingerprint(absGitDir + ":" + Math.random());
+    try { await fs.rm(storageDir(fingerprint), { recursive: true, force: true }); } catch {}
+    const token = "mb-token";
+    let resolver!: (r: SubmissionResult) => void;
+    const resolved = new Promise<SubmissionResult>((r) => { resolver = r; });
+    const server = await createServer({
+      cwd: dir, fingerprint, html: "<html>UI</html>", token,
+      onResolve: (r) => resolver(r),
+    });
+    try {
+      const r = await fetch(`http://127.0.0.1:${server.port}/api/diff?source=branch&t=${token}`);
+      const body = await r.json() as { diff: string; files: string[] };
+      // Only the feat branch's own file should appear; main's later
+      // commit must NOT show up because we diff from the merge-base.
+      assert.deepEqual(body.files, ["feat.txt"]);
+      assert.doesNotMatch(body.diff, /main-only\.txt/);
+      assert.match(body.diff, /feature/);
+    } finally {
+      await server.close();
+      void resolved;
+    }
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("GET /api/diff?source=uncommitted returns working tree only", async () => {
   const h = await startHarness();
   try {

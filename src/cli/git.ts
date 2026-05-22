@@ -64,6 +64,15 @@ export async function defaultBaseBranch(cwd: string): Promise<string> {
   throw new GitError("Could not determine default base branch (no main/master found).");
 }
 
+/**
+ * Resolve the merge-base of two refs. Falls back to throwing GitError when
+ * the two refs have no common ancestor (unrelated histories).
+ */
+export async function mergeBase(refA: string, refB: string, cwd: string): Promise<string> {
+  const out = await git(["merge-base", refA, refB], cwd);
+  return out.trim();
+}
+
 export interface Commit {
   sha: string;
   shortSha: string;

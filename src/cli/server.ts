@@ -139,12 +139,22 @@ async function listDiffSources(cwd: string): Promise<DiffSource[]> {
   return sources;
 }
 
-function sourceToDiffOpts(source: DiffSource): git.DiffOptions {
+/**
+ * For branch-based sources we always diff against the **merge-base** of the
+ * base and HEAD, not the (possibly-stale or further-along) base tip. This
+ * matches GitHub PR-diff semantics: you see only the work introduced on this
+ * branch, not arbitrary commits that have since landed on the base.
+ */
+async function sourceToDiffOpts(source: DiffSource, cwd: string): Promise<git.DiffOptions> {
   switch (source.kind) {
-    case "branch-vs-base":
-      return { range: `${source.base}..HEAD` };
-    case "branch-vs-base-with-uncommitted":
-      return { range: `${source.base}..HEAD`, includeUncommitted: true };
+    case "branch-vs-base": {
+      const mb = await git.mergeBase(source.base!, "HEAD", cwd);
+      return { range: `${mb}..HEAD` };
+    }
+    case "branch-vs-base-with-uncommitted": {
+      const mb = await git.mergeBase(source.base!, "HEAD", cwd);
+      return { range: `${mb}..HEAD`, includeUncommitted: true };
+    }
     case "uncommitted":
       return { uncommittedOnly: true };
     case "commit":
@@ -157,12 +167,19 @@ function sourceToDiffOpts(source: DiffSource): git.DiffOptions {
  * a diff source correspond to. Used by the `/api/source` endpoint to fetch the
  * full file content for "expand collapsed lines" requests.
  */
-function sourceToRefs(source: DiffSource): { old: string | null; new: string | "worktree" } {
+async function sourceToRefs(
+  source: DiffSource,
+  cwd: string,
+): Promise<{ old: string | null; new: string | "worktree" }> {
   switch (source.kind) {
-    case "branch-vs-base":
-      return { old: source.base!, new: "HEAD" };
-    case "branch-vs-base-with-uncommitted":
-      return { old: source.base!, new: "worktree" };
+    case "branch-vs-base": {
+      const mb = await git.mergeBase(source.base!, "HEAD", cwd);
+      return { old: mb, new: "HEAD" };
+    }
+    case "branch-vs-base-with-uncommitted": {
+      const mb = await git.mergeBase(source.base!, "HEAD", cwd);
+      return { old: mb, new: "worktree" };
+    }
     case "uncommitted":
       return { old: "HEAD", new: "worktree" };
     case "commit":
@@ -261,8 +278,9 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         const sourceId = url.searchParams.get("source") ?? "";
         const source = await sourceById(sourceId);
         if (!source) return sendJson(res, 404, { error: "unknown source" });
-        const diff = await git.getDiff(sourceToDiffOpts(source), cwd);
-        const files = await git.changedFiles(sourceToDiffOpts(source), cwd);
+        const opts = await sourceToDiffOpts(source, cwd);
+        const diff = await git.getDiff(opts, cwd);
+        const files = await git.changedFiles(opts, cwd);
         sendJson(res, 200, { diff, files, sourceId: source.id });
         return;
       }
@@ -274,7 +292,7 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         const source = await sourceById(sourceId);
         if (!source) return sendJson(res, 404, { error: "unknown source" });
         if (!filePath || filePath.includes("..")) return sendJson(res, 400, { error: "invalid path" });
-        const refs = sourceToRefs(source);
+        const refs = await sourceToRefs(source, cwd);
         const ref = side === "new" ? refs.new : refs.old;
         if (ref === null) return sendJson(res, 200, { content: null });
         const content = await readFileForSide(ref, filePath, cwd);

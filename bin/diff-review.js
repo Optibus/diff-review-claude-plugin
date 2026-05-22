@@ -58,6 +58,10 @@ async function defaultBaseBranch(cwd) {
   }
   throw new GitError("Could not determine default base branch (no main/master found).");
 }
+async function mergeBase(refA, refB, cwd) {
+  const out = await git(["merge-base", refA, refB], cwd);
+  return out.trim();
+}
 async function commitsBetween(base, head, cwd) {
   const fmt = "%H%x1f%h%x1f%s%x1f%an%x1f%aI";
   const out = await git(["log", `--pretty=format:${fmt}`, `${base}..${head}`], cwd);
@@ -376,24 +380,32 @@ async function listDiffSources(cwd) {
   }
   return sources;
 }
-function sourceToDiffOpts(source) {
+async function sourceToDiffOpts(source, cwd) {
   switch (source.kind) {
-    case "branch-vs-base":
-      return { range: `${source.base}..HEAD` };
-    case "branch-vs-base-with-uncommitted":
-      return { range: `${source.base}..HEAD`, includeUncommitted: true };
+    case "branch-vs-base": {
+      const mb = await mergeBase(source.base, "HEAD", cwd);
+      return { range: `${mb}..HEAD` };
+    }
+    case "branch-vs-base-with-uncommitted": {
+      const mb = await mergeBase(source.base, "HEAD", cwd);
+      return { range: `${mb}..HEAD`, includeUncommitted: true };
+    }
     case "uncommitted":
       return { uncommittedOnly: true };
     case "commit":
       return { commit: source.commit };
   }
 }
-function sourceToRefs(source) {
+async function sourceToRefs(source, cwd) {
   switch (source.kind) {
-    case "branch-vs-base":
-      return { old: source.base, new: "HEAD" };
-    case "branch-vs-base-with-uncommitted":
-      return { old: source.base, new: "worktree" };
+    case "branch-vs-base": {
+      const mb = await mergeBase(source.base, "HEAD", cwd);
+      return { old: mb, new: "HEAD" };
+    }
+    case "branch-vs-base-with-uncommitted": {
+      const mb = await mergeBase(source.base, "HEAD", cwd);
+      return { old: mb, new: "worktree" };
+    }
     case "uncommitted":
       return { old: "HEAD", new: "worktree" };
     case "commit":
@@ -472,8 +484,9 @@ function createServer(deps) {
         const sourceId = url.searchParams.get("source") ?? "";
         const source = await sourceById(sourceId);
         if (!source) return sendJson(res, 404, { error: "unknown source" });
-        const diff = await getDiff(sourceToDiffOpts(source), cwd);
-        const files = await changedFiles(sourceToDiffOpts(source), cwd);
+        const opts = await sourceToDiffOpts(source, cwd);
+        const diff = await getDiff(opts, cwd);
+        const files = await changedFiles(opts, cwd);
         sendJson(res, 200, { diff, files, sourceId: source.id });
         return;
       }
@@ -484,7 +497,7 @@ function createServer(deps) {
         const source = await sourceById(sourceId);
         if (!source) return sendJson(res, 404, { error: "unknown source" });
         if (!filePath || filePath.includes("..")) return sendJson(res, 400, { error: "invalid path" });
-        const refs = sourceToRefs(source);
+        const refs = await sourceToRefs(source, cwd);
         const ref = side === "new" ? refs.new : refs.old;
         if (ref === null) return sendJson(res, 200, { content: null });
         const content = await readFileForSide(ref, filePath, cwd);

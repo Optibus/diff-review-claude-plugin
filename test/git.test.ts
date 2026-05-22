@@ -127,3 +127,57 @@ test("changedFiles lists files in the range", async () => {
   assert.deepEqual(files.sort(), ["a.txt", "c.txt"]);
   await fs.rm(dir, { recursive: true, force: true });
 });
+
+test("getDiff uncommittedOnly includes untracked files as new-file diffs", async () => {
+  const dir = await makeFixtureRepo();
+  await fs.writeFile(path.join(dir, "untracked.txt"), "fresh\nlines\n");
+  await fs.mkdir(path.join(dir, "newdir"), { recursive: true });
+  await fs.writeFile(path.join(dir, "newdir", "nested.txt"), "inside\n");
+  const out = await getDiff({ uncommittedOnly: true }, dir);
+  assert.match(out, /line5/);
+  assert.match(out, /diff --git a\/untracked\.txt b\/untracked\.txt/);
+  assert.match(out, /^--- \/dev\/null$/m);
+  assert.match(out, /^\+\+\+ b\/untracked\.txt$/m);
+  assert.match(out, /\+fresh/);
+  assert.match(out, /diff --git a\/newdir\/nested\.txt b\/newdir\/nested\.txt/);
+  assert.match(out, /\+inside/);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("getDiff with includeUncommitted also picks up untracked files", async () => {
+  const dir = await makeFixtureRepo();
+  await fs.writeFile(path.join(dir, "untracked.txt"), "u\n");
+  const out = await getDiff({ range: "main..feature", includeUncommitted: true }, dir);
+  assert.match(out, /diff --git a\/untracked\.txt b\/untracked\.txt/);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("gitignored files are NOT included as untracked", async () => {
+  const dir = await makeFixtureRepo();
+  await fs.writeFile(path.join(dir, ".gitignore"), "ignored.txt\n");
+  await exec("git", ["add", ".gitignore"], { cwd: dir });
+  await exec("git", ["commit", "-q", "-m", "add gitignore"], { cwd: dir });
+  await fs.writeFile(path.join(dir, "ignored.txt"), "ignored\n");
+  await fs.writeFile(path.join(dir, "kept.txt"), "kept\n");
+  const out = await getDiff({ uncommittedOnly: true }, dir);
+  assert.doesNotMatch(out, /ignored\.txt/);
+  assert.match(out, /diff --git a\/kept\.txt b\/kept\.txt/);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("changedFiles for uncommittedOnly unions tracked + untracked", async () => {
+  const dir = await makeFixtureRepo();
+  await fs.writeFile(path.join(dir, "untracked.txt"), "x\n");
+  const files = await changedFiles({ uncommittedOnly: true }, dir);
+  assert.ok(files.includes("a.txt"), `tracked a.txt missing from ${JSON.stringify(files)}`);
+  assert.ok(files.includes("untracked.txt"), `untracked.txt missing from ${JSON.stringify(files)}`);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("changedFiles for plain range does NOT include untracked", async () => {
+  const dir = await makeFixtureRepo();
+  await fs.writeFile(path.join(dir, "untracked.txt"), "x\n");
+  const files = await changedFiles({ range: "main..feature" }, dir);
+  assert.ok(!files.includes("untracked.txt"));
+  await fs.rm(dir, { recursive: true, force: true });
+});

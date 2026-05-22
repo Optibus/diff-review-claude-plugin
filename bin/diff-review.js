@@ -96,16 +96,53 @@ async function getDiff(opts, cwd) {
     return git(["diff", ...common, `${opts.commit}^!`], cwd);
   }
   if (opts.uncommittedOnly) {
-    return git(["diff", ...common, "HEAD"], cwd);
+    const main2 = await git(["diff", ...common, "HEAD"], cwd);
+    return main2 + await untrackedDiff(cwd);
   }
   if (opts.range) {
     if (opts.includeUncommitted) {
       const base = opts.range.split(/\.\.\.?/)[0];
-      return git(["diff", ...common, base], cwd);
+      const main2 = await git(["diff", ...common, base], cwd);
+      return main2 + await untrackedDiff(cwd);
     }
     return git(["diff", ...common, opts.range], cwd);
   }
   throw new GitError("getDiff: must provide range, commit, or uncommittedOnly");
+}
+async function listUntracked(cwd) {
+  const out = await git(["ls-files", "--others", "--exclude-standard", "-z"], cwd);
+  return out.split("\0").filter(Boolean);
+}
+async function untrackedDiff(cwd) {
+  const paths = await listUntracked(cwd);
+  if (paths.length === 0) return "";
+  const parts = [];
+  for (const p of paths) {
+    const out = await diffAgainstDevNull(p, cwd);
+    if (out) {
+      parts.push(out);
+    }
+  }
+  return parts.join("");
+}
+async function diffAgainstDevNull(path3, cwd) {
+  return new Promise((resolve, reject) => {
+    const args = ["diff", "--no-color", "--no-ext-diff", "--binary", "--no-index", "--", "/dev/null", path3];
+    const child = spawn("git", args, { cwd });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (b) => {
+      stdout += b.toString();
+    });
+    child.stderr.on("data", (b) => {
+      stderr += b.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0 || code === 1) resolve(stdout);
+      else reject(new GitError(`git diff --no-index exited ${code}`, stderr));
+    });
+  });
 }
 async function readFileAtRef(ref, path3, cwd) {
   try {
@@ -134,14 +171,17 @@ async function getAttributes(paths, attrs, cwd) {
 async function changedFiles(opts, cwd) {
   const common = ["--name-only", "--no-color"];
   let args;
+  let includeUntracked = false;
   if (opts.commit) {
     args = ["diff", ...common, `${opts.commit}^!`];
   } else if (opts.uncommittedOnly) {
     args = ["diff", ...common, "HEAD"];
+    includeUntracked = true;
   } else if (opts.range) {
     if (opts.includeUncommitted) {
       const base = opts.range.split(/\.\.\.?/)[0];
       args = ["diff", ...common, base];
+      includeUntracked = true;
     } else {
       args = ["diff", ...common, opts.range];
     }
@@ -149,7 +189,10 @@ async function changedFiles(opts, cwd) {
     return [];
   }
   const out = await git(args, cwd);
-  return out.split("\n").filter(Boolean);
+  const tracked = out.split("\n").filter(Boolean);
+  if (!includeUntracked) return tracked;
+  const untracked = await listUntracked(cwd);
+  return Array.from(/* @__PURE__ */ new Set([...tracked, ...untracked]));
 }
 
 // src/cli/lifecycle.ts

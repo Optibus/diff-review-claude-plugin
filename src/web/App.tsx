@@ -6,6 +6,7 @@ import { DiffSourcePicker } from "./DiffSourcePicker";
 import { FileTree } from "./FileTree";
 import { DiffView } from "./DiffView";
 import { SubmitPopover } from "./SubmitPopover";
+import { displayPath } from "./paths";
 import type { DiffSource, Draft, DraftStore } from "../cli/types";
 
 function snippetFor(
@@ -15,7 +16,7 @@ function snippetFor(
   endLine: number,
   side: "LEFT" | "RIGHT",
 ): string | undefined {
-  const file = files.find((f) => (f.newPath ?? f.oldPath) === filePath || (f.oldPath ?? f.newPath) === filePath);
+  const file = files.find((f) => displayPath(f) === filePath);
   if (!file) return undefined;
   const lineNoOf = side === "LEFT" ? computeOldLineNumber : computeNewLineNumber;
   const lines: string[] = [];

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { FileData } from "react-diff-view";
+import { displayPath } from "./paths";
 
 interface Props {
   files: FileData[];
@@ -11,7 +12,7 @@ interface Props {
 
 function fileLabel(f: FileData): string {
   if (f.type === "rename") return `${f.oldPath} → ${f.newPath}`;
-  return f.newPath ?? f.oldPath ?? "";
+  return displayPath(f);
 }
 
 function typeBadge(f: FileData): string {
@@ -25,14 +26,13 @@ function typeBadge(f: FileData): string {
 }
 
 function fileKey(f: FileData): string {
-  return f.newPath || f.oldPath || fileLabel(f);
+  return displayPath(f) || fileLabel(f);
 }
 
 function filePathForMatch(f: FileData): string {
   // Match against both sides so renamed files find both the old and new path.
-  const left = f.newPath ?? "";
-  const right = f.oldPath ?? "";
-  return left === right ? left : `${left} ${right}`;
+  if (f.type === "rename") return `${f.oldPath ?? ""} ${f.newPath ?? ""}`;
+  return displayPath(f);
 }
 
 type DirNode = { kind: "dir"; name: string; id: string; children: TreeNode[] };
@@ -42,7 +42,7 @@ type TreeNode = DirNode | FileNode;
 function buildTree(files: FileData[]): DirNode {
   const root: DirNode = { kind: "dir", name: "", id: "", children: [] };
   for (const f of files) {
-    const path = f.newPath ?? f.oldPath ?? "";
+    const path = displayPath(f);
     const parts = path.split("/").filter(Boolean);
     const dirs = parts.slice(0, -1);
     const leafName = parts[parts.length - 1] ?? fileLabel(f);
@@ -182,10 +182,7 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
     const style = { "--depth": depth } as CSSProperties;
     if (node.kind === "file") {
       const f = node.file;
-      const count =
-        commentCountByFile[f.newPath ?? ""] ??
-        commentCountByFile[f.oldPath ?? ""] ??
-        0;
+      const count = commentCountByFile[displayPath(f)] ?? 0;
       const isActive = activeFile === node.key;
       return (
         <li key={`f:${node.key}`}>

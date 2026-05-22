@@ -14,6 +14,7 @@ import type { ChangeData, DiffType, FileData, HunkData, HunkTokens, ViewType } f
 import type { Draft } from "../cli/types";
 import { CommentThread } from "./CommentThread";
 import { api } from "./api";
+import { displayPath } from "./paths";
 import { languageFor, refractor } from "./syntax";
 
 interface Props {
@@ -38,7 +39,7 @@ function isGenerated(attrs: Record<string, string> | undefined): boolean {
 }
 
 function fileKey(f: FileData): string {
-  return f.newPath || f.oldPath || "";
+  return displayPath(f);
 }
 
 function canonicalId(d: Draft): string {
@@ -81,9 +82,7 @@ export function DiffView({
     <div className="diffview">
       {files.map((file) => {
         const path = fileKey(file);
-        const generated =
-          isGenerated(fileAttrs?.[file.newPath ?? ""]) ||
-          isGenerated(fileAttrs?.[file.oldPath ?? ""]);
+        const generated = isGenerated(fileAttrs?.[displayPath(file)]);
         return (
           <FileDiffPanel
             key={`${sourceId}:${path}`}

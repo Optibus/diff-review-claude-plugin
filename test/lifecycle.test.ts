@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
 import { promises as fs } from "node:fs";
+import { test } from "node:test";
 import { acquireLock, LockError, releaseLock } from "../src/cli/lifecycle.js";
 import { lockPath, repoFingerprint, storageDir } from "../src/cli/storage.js";
 
@@ -9,7 +9,9 @@ const FP = repoFingerprint(`/tmp/diff-review-lock-${process.pid}`);
 async function cleanup() {
   try {
     await fs.rm(storageDir(FP), { recursive: true, force: true });
-  } catch {/* ignore */}
+  } catch {
+    /* ignore */
+  }
 }
 
 test("acquireLock writes our PID; releaseLock removes it", async () => {

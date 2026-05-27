@@ -8,8 +8,12 @@ function gitWithStdin(args: string[], stdin: string, cwd: string): Promise<strin
     const child = spawn("git", args, { cwd });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (b: Buffer) => { stdout += b.toString(); });
-    child.stderr.on("data", (b: Buffer) => { stderr += b.toString(); });
+    child.stdout.on("data", (b: Buffer) => {
+      stdout += b.toString();
+    });
+    child.stderr.on("data", (b: Buffer) => {
+      stderr += b.toString();
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve(stdout);
@@ -20,7 +24,10 @@ function gitWithStdin(args: string[], stdin: string, cwd: string): Promise<strin
 }
 
 export class GitError extends Error {
-  constructor(message: string, public stderr?: string) {
+  constructor(
+    message: string,
+    public stderr?: string,
+  ) {
     super(message);
     this.name = "GitError";
   }
@@ -111,12 +118,12 @@ export async function commitsBetween(base: string, head: string, cwd: string): P
 }
 
 export interface DiffOptions {
-  range?: string;             // e.g. "main..HEAD" or "main...HEAD"
+  range?: string; // e.g. "main..HEAD" or "main...HEAD"
   /** Layer uncommitted (staged + unstaged) changes on top of the committed range. */
   includeUncommitted?: boolean;
   /** Just `git diff HEAD` — everything not yet committed, staged or not. */
   uncommittedOnly?: boolean;
-  commit?: string;            // single commit -> show that commit's diff
+  commit?: string; // single commit -> show that commit's diff
 }
 
 /**
@@ -189,12 +196,25 @@ async function untrackedDiff(cwd: string): Promise<string> {
 
 async function diffAgainstDevNull(path: string, cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const args = ["diff", "--no-color", "--no-ext-diff", "--binary", "--no-index", "--", "/dev/null", path];
+    const args = [
+      "diff",
+      "--no-color",
+      "--no-ext-diff",
+      "--binary",
+      "--no-index",
+      "--",
+      "/dev/null",
+      path,
+    ];
     const child = spawn("git", args, { cwd });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (b: Buffer) => { stdout += b.toString(); });
-    child.stderr.on("data", (b: Buffer) => { stderr += b.toString(); });
+    child.stdout.on("data", (b: Buffer) => {
+      stdout += b.toString();
+    });
+    child.stderr.on("data", (b: Buffer) => {
+      stderr += b.toString();
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       // 0 = no diff (shouldn't happen here); 1 = diff produced (expected).
@@ -208,7 +228,11 @@ async function diffAgainstDevNull(path: string, cwd: string): Promise<string> {
  * Read a file's contents at a given git ref. Returns null if the path doesn't
  * exist at that ref (e.g., newly-added or deleted files).
  */
-export async function readFileAtRef(ref: string, path: string, cwd: string): Promise<string | null> {
+export async function readFileAtRef(
+  ref: string,
+  path: string,
+  cwd: string,
+): Promise<string | null> {
   try {
     return await git(["show", `${ref}:${path}`], cwd);
   } catch {
@@ -233,7 +257,7 @@ export async function getAttributes(
   if (paths.length === 0 || attrs.length === 0) return result;
   const stdout = await gitWithStdin(
     ["check-attr", "--stdin", "-z", ...attrs],
-    paths.join("\0") + "\0",
+    `${paths.join("\0")}\0`,
     cwd,
   );
   // -z format: <path>\0<attr>\0<value>\0  (one triple per record)

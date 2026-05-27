@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FileData } from "react-diff-view";
 import { displayPath } from "./paths";
 
@@ -17,11 +17,16 @@ function fileLabel(f: FileData): string {
 
 function typeBadge(f: FileData): string {
   switch (f.type) {
-    case "add": return "A";
-    case "delete": return "D";
-    case "rename": return "R";
-    case "copy": return "C";
-    default: return "M";
+    case "add":
+      return "A";
+    case "delete":
+      return "D";
+    case "rename":
+      return "R";
+    case "copy":
+      return "C";
+    default:
+      return "M";
   }
 }
 
@@ -48,9 +53,7 @@ function buildTree(files: FileData[]): DirNode {
     const leafName = parts[parts.length - 1] ?? fileLabel(f);
     let cursor = root;
     for (const part of dirs) {
-      let next = cursor.children.find(
-        (c): c is DirNode => c.kind === "dir" && c.name === part,
-      );
+      let next = cursor.children.find((c): c is DirNode => c.kind === "dir" && c.name === part);
       if (!next) {
         next = {
           kind: "dir",
@@ -70,9 +73,7 @@ function buildTree(files: FileData[]): DirNode {
 // VS Code-style: any dir whose only child is also a dir gets merged into it.
 // Recurses bottom-up so chains of length > 2 collapse fully.
 function compressDir(node: DirNode): DirNode {
-  const children: TreeNode[] = node.children.map((c) =>
-    c.kind === "dir" ? compressDir(c) : c,
-  );
+  const children: TreeNode[] = node.children.map((c) => (c.kind === "dir" ? compressDir(c) : c));
   let merged: DirNode = { ...node, children };
   while (
     merged.name !== "" && // never compress the synthetic root
@@ -146,10 +147,7 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
     () => (filtering ? filterTree(root, trimmedQuery) : root),
     [root, filtering, trimmedQuery],
   );
-  const matchCount = useMemo(
-    () => (displayRoot ? countFiles(displayRoot) : 0),
-    [displayRoot],
-  );
+  const matchCount = useMemo(() => (displayRoot ? countFiles(displayRoot) : 0), [displayRoot]);
 
   // Auto-expand ancestors when activeFile changes from the outside.
   useEffect(() => {
@@ -187,6 +185,7 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
       return (
         <li key={`f:${node.key}`}>
           <button
+            type="button"
             className={`filetree__item filetree__item--file ${isActive ? "is-active" : ""}`}
             onClick={() => onSelect(node.key)}
             title={fileLabel(f)}
@@ -212,13 +211,13 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
           style={style}
           aria-expanded={!isCollapsed}
         >
-          <span className="filetree__chevron" aria-hidden="true">{isCollapsed ? "▶" : "▼"}</span>
+          <span className="filetree__chevron" aria-hidden="true">
+            {isCollapsed ? "▶" : "▼"}
+          </span>
           <span className="filetree__dirname">{node.name}/</span>
         </button>
         {!isCollapsed && (
-          <ul className="filetree__list">
-            {node.children.map((c) => renderNode(c, depth + 1))}
-          </ul>
+          <ul className="filetree__list">{node.children.map((c) => renderNode(c, depth + 1))}</ul>
         )}
       </li>
     );
@@ -233,7 +232,9 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
           placeholder="Filter files…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Escape") setQuery(""); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+          }}
           aria-label="Filter files"
         />
       </div>
@@ -243,9 +244,7 @@ export function FileTree({ files, commentCountByFile, activeFile, onSelect }: Pr
           : `${files.length} file${files.length === 1 ? "" : "s"} changed`}
       </div>
       {displayRoot && displayRoot.children.length > 0 ? (
-        <ul className="filetree__list">
-          {displayRoot.children.map((c) => renderNode(c, 0))}
-        </ul>
+        <ul className="filetree__list">{displayRoot.children.map((c) => renderNode(c, 0))}</ul>
       ) : (
         <div className="filetree__empty">No files match.</div>
       )}

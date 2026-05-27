@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { test } from "node:test";
 import {
   clearDrafts,
   commentId,
@@ -20,7 +20,9 @@ const FP = repoFingerprint(TEST_GIT_DIR);
 async function cleanup() {
   try {
     await fs.rm(storageDir(FP), { recursive: true, force: true });
-  } catch {/* ignore */}
+  } catch {
+    /* ignore */
+  }
 }
 
 test("repoFingerprint is deterministic and 16 hex chars", () => {

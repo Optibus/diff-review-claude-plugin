@@ -79,7 +79,7 @@ test("formatReview trims trailing whitespace from body but preserves internal ne
   const store: DraftStore = { schemaVersion: 1, comments: { [c.id]: c }, summary: "" };
   const md = formatReview(store)!;
   assert.match(md, /line1\nline2/);
-  assert.doesNotMatch(md, /line2\n\n  /);
+  assert.doesNotMatch(md, /line2\n\n {2}/);
 });
 
 test("formatReview includes sourceLabel in the heading when present", () => {
@@ -96,13 +96,15 @@ test("formatReview emits a quoted lineSnippet block before the body", () => {
   });
   const store: DraftStore = { schemaVersion: 1, comments: { [c.id]: c }, summary: "" };
   const md = formatReview(store)!;
-  assert.ok(md.includes(
-    "### a.ts:10-12 (feature vs main)\n\n" +
-    ">     for i in range(n):\n" +
-    ">         if i % 2:\n" +
-    ">             pass\n\n" +
-    "extract helper",
-  ));
+  assert.ok(
+    md.includes(
+      "### a.ts:10-12 (feature vs main)\n\n" +
+        ">     for i in range(n):\n" +
+        ">         if i % 2:\n" +
+        ">             pass\n\n" +
+        "extract helper",
+    ),
+  );
 });
 
 test("formatReview omits the source suffix when sourceLabel is missing", () => {

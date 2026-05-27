@@ -19,7 +19,11 @@ async function jsonReq<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`;
-    try { msg = ((await res.json()) as { error?: string }).error ?? msg; } catch {/* ignore */}
+    try {
+      msg = ((await res.json()) as { error?: string }).error ?? msg;
+    } catch {
+      /* ignore */
+    }
     throw new Error(msg);
   }
   return res.json() as Promise<T>;
@@ -41,13 +45,18 @@ export const api = {
     ),
   drafts: () => jsonReq<DraftStore>("/api/drafts"),
   saveDraft: (id: string, draft: Omit<Draft, "id" | "updatedAt">) =>
-    jsonReq<Draft>(`/api/drafts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) }),
+    jsonReq<Draft>(`/api/drafts/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(draft),
+    }),
   deleteDraft: (id: string) =>
     jsonReq<{ ok: true }>(`/api/drafts/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  clearAllComments: () =>
-    jsonReq<{ ok: true }>("/api/drafts/clear", { method: "POST" }),
+  clearAllComments: () => jsonReq<{ ok: true }>("/api/drafts/clear", { method: "POST" }),
   saveSummary: (summary: string) =>
-    jsonReq<{ summary: string }>("/api/summary", { method: "PUT", body: JSON.stringify({ summary }) }),
+    jsonReq<{ summary: string }>("/api/summary", {
+      method: "PUT",
+      body: JSON.stringify({ summary }),
+    }),
   submit: () => jsonReq<{ ok: true }>("/api/submit", { method: "POST" }),
   cancel: () => jsonReq<{ ok: true }>("/api/cancel", { method: "POST" }),
 };
@@ -64,6 +73,8 @@ export function openEventStream(handlers: EventStreamHandlers): () => void {
     handlers.onSuperseded?.();
     es.close();
   });
-  es.onerror = () => {/* let browser auto-reconnect */};
+  es.onerror = () => {
+    /* let browser auto-reconnect */
+  };
   return () => es.close();
 }

@@ -1,6 +1,6 @@
-import { chromium } from "@playwright/test";
-import { test, expect, makeRepo, startBinary } from "./fixtures";
 import { promises as fs } from "node:fs";
+import { chromium } from "@playwright/test";
+import { expect, makeRepo, startBinary, test } from "./fixtures";
 
 // react-diff-view renders both old- and new-side gutters per change. For an
 // INSERT change only the new-side gutter has a line number, so filtering by
@@ -20,7 +20,10 @@ test.describe("diff-review UI", () => {
   test("single-line comment: click → type → save → counter increments", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
     // Click line 8 (insertion) — only the new-side gutter matches.
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click();
     await expect(file.locator(".thread__header")).toContainText("Line 8");
 
     await app.locator(".thread__textarea").fill("Consider a docstring here.");
@@ -39,11 +42,17 @@ test.describe("diff-review UI", () => {
   test("range comment: click + shift-click → 'Lines X–Y'", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
     // Click line 7 first (insertion "def shout...").
-    await file.locator('td.diff-gutter-insert[data-change-key="I7"]').filter({ hasText: "7" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I7"]')
+      .filter({ hasText: "7" })
+      .click();
     await expect(file.locator(".thread__header")).toContainText("Line 7");
     // Shift-click line 8 (the next insertion). The data-change-key locator
     // is independent of the post-widget DOM position.
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click({ modifiers: ["Shift"] });
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click({ modifiers: ["Shift"] });
     await expect(file.locator(".thread__header")).toContainText("Lines 7–8");
     // Counter still 0 because body is empty.
     await expect(app.locator(".topbar__count")).toContainText("0 comments");
@@ -55,7 +64,10 @@ test.describe("diff-review UI", () => {
 
   test("edit then delete a saved comment", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click();
     await app.locator(".thread__textarea").fill("first version");
     await app.getByRole("button", { name: "Save", exact: true }).click();
     await expect(app.locator(".thread__body")).toContainText("first version");
@@ -104,7 +116,10 @@ test.describe("diff-review UI", () => {
 
   test("orphan-comment banner appears after switching source", async ({ app }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click();
     await app.locator(".thread__textarea").fill("anchored to branch view");
     await app.getByRole("button", { name: "Save", exact: true }).click();
     await expect(app.locator(".thread__body")).toContainText("anchored to branch view");
@@ -117,7 +132,10 @@ test.describe("diff-review UI", () => {
 
   test("discard flow uses inline confirm bar, not a browser modal", async ({ app, bin }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click();
     await app.locator(".thread__textarea").fill("anything");
     await app.getByRole("button", { name: "Save", exact: true }).click();
 
@@ -142,7 +160,10 @@ test.describe("diff-review UI", () => {
 
   test("submit produces the correct markdown on stdout and exits 0", async ({ app, bin }) => {
     const file = app.locator(".filediff", { hasText: "greeting.py" });
-    await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+    await file
+      .locator('td.diff-gutter-insert[data-change-key="I8"]')
+      .filter({ hasText: "8" })
+      .click();
     await app.locator(".thread__textarea").fill("docstring please");
     await app.getByRole("button", { name: "Save", exact: true }).click();
 
@@ -163,7 +184,9 @@ test.describe("diff-review UI", () => {
     expect(stdout).toMatch(/docstring please/);
   });
 
-  test("diff is syntax-highlighted when the file extension maps to a known language", async ({ app }) => {
+  test("diff is syntax-highlighted when the file extension maps to a known language", async ({
+    app,
+  }) => {
     // The simple fixture is greeting.py — Python keywords should be highlighted.
     const file = app.locator(".filediff", { hasText: "greeting.py" });
     // refractor emits <span class="token keyword">def</span> etc.
@@ -192,19 +215,34 @@ test.describe("diff-review UI", () => {
       await expect(file.getByText(`line ${i}`, { exact: true })).toBeVisible();
     }
     // The top-of-file expand button should be gone now (nothing left to expand above).
-    await expect(file.locator(".expand-btn").filter({ hasText: /hidden line/ }).first()).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+    await expect(
+      file
+        .locator(".expand-btn")
+        .filter({ hasText: /hidden line/ })
+        .first(),
+    )
+      .not.toBeVisible({ timeout: 1000 })
+      .catch(() => {});
   });
 });
 
-test("clear all comments wipes every saved comment after confirmation but keeps the summary", async ({ app }) => {
+test("clear all comments wipes every saved comment after confirmation but keeps the summary", async ({
+  app,
+}) => {
   const file = app.locator(".filediff", { hasText: "greeting.py" });
 
   // Save two comments and a summary.
-  await file.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+  await file
+    .locator('td.diff-gutter-insert[data-change-key="I8"]')
+    .filter({ hasText: "8" })
+    .click();
   await app.locator(".thread__textarea").fill("first comment");
   await app.getByRole("button", { name: "Save", exact: true }).click();
 
-  await file.locator('td.diff-gutter-insert[data-change-key="I7"]').filter({ hasText: "7" }).click();
+  await file
+    .locator('td.diff-gutter-insert[data-change-key="I7"]')
+    .filter({ hasText: "7" })
+    .click();
   await app.locator(".thread__textarea").fill("second comment");
   await app.getByRole("button", { name: "Save", exact: true }).click();
 
@@ -270,7 +308,10 @@ test("drafts persist across discard and reappear on resume", async () => {
     try {
       await page1.goto(bin1.url);
       const file1 = page1.locator(".filediff", { hasText: "greeting.py" });
-      await file1.locator('td.diff-gutter-insert[data-change-key="I8"]').filter({ hasText: "8" }).click();
+      await file1
+        .locator('td.diff-gutter-insert[data-change-key="I8"]')
+        .filter({ hasText: "8" })
+        .click();
       await page1.locator(".thread__textarea").fill("persisted across sessions");
       await page1.getByRole("button", { name: "Save", exact: true }).click();
       await expect(page1.locator(".thread__body")).toContainText("persisted across sessions");

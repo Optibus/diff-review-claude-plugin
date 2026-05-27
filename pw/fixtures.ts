@@ -1,9 +1,9 @@
-import { ChildProcess, execFile, spawn } from "node:child_process";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { promisify } from "node:util";
 import { createServer } from "node:net";
 import path from "node:path";
-import { test as base, Page, expect } from "@playwright/test";
+import { promisify } from "node:util";
+import { test as base, expect, type Page } from "@playwright/test";
 
 const exec = promisify(execFile);
 const BIN = path.resolve(import.meta.dirname, "..", "bin", "diff-review.js");
@@ -15,7 +15,9 @@ export interface RepoFixture {
   git: (...args: string[]) => Promise<{ stdout: string; stderr: string }>;
 }
 
-export async function makeRepo(scenario: "simple" | "multifile" | "expandable"): Promise<RepoFixture> {
+export async function makeRepo(
+  scenario: "simple" | "multifile" | "expandable",
+): Promise<RepoFixture> {
   const dir = await fs.mkdtemp("/tmp/diff-review-pw-");
   const git = (...args: string[]) => exec("git", args, { cwd: dir });
   await git("init", "-q", "-b", "main");
@@ -23,48 +25,56 @@ export async function makeRepo(scenario: "simple" | "multifile" | "expandable"):
   await git("config", "user.name", "T");
 
   if (scenario === "simple") {
-    await fs.writeFile(path.join(dir, "greeting.py"), [
-      "def greet(name):",
-      '    return "Hello, " + name + "!"',
-      "",
-      "def farewell(name):",
-      '    return "Goodbye, " + name + "!"',
-      "",
-      'print(greet("World"))',
-      'print(farewell("World"))',
-      "",
-    ].join("\n"));
+    await fs.writeFile(
+      path.join(dir, "greeting.py"),
+      [
+        "def greet(name):",
+        '    return "Hello, " + name + "!"',
+        "",
+        "def farewell(name):",
+        '    return "Goodbye, " + name + "!"',
+        "",
+        'print(greet("World"))',
+        'print(farewell("World"))',
+        "",
+      ].join("\n"),
+    );
     await git("add", ".");
     await git("commit", "-q", "-m", "initial");
     await git("checkout", "-q", "-b", "refactor");
-    await fs.writeFile(path.join(dir, "greeting.py"), [
-      "def greet(name: str) -> str:",
-      '    return f"Hello, {name}!"',
-      "",
-      "def farewell(name: str) -> str:",
-      '    return f"Goodbye, {name}!"',
-      "",
-      "def shout(message: str) -> str:",
-      "    return message.upper()",
-      "",
-      'if __name__ == "__main__":',
-      '    print(greet("World"))',
-      '    print(farewell("World"))',
-      '    print(shout(greet("loud")))',
-      "",
-    ].join("\n"));
+    await fs.writeFile(
+      path.join(dir, "greeting.py"),
+      [
+        "def greet(name: str) -> str:",
+        '    return f"Hello, {name}!"',
+        "",
+        "def farewell(name: str) -> str:",
+        '    return f"Goodbye, {name}!"',
+        "",
+        "def shout(message: str) -> str:",
+        "    return message.upper()",
+        "",
+        'if __name__ == "__main__":',
+        '    print(greet("World"))',
+        '    print(farewell("World"))',
+        '    print(shout(greet("loud")))',
+        "",
+      ].join("\n"),
+    );
     await git("add", ".");
     await git("commit", "-q", "-m", "modernize greeting");
   } else if (scenario === "expandable") {
     // A 30-line file with one tiny edit in the middle. The diff hunk
     // exposes ~3 lines of context around the change, leaving the rest
     // hidden — perfect for testing expand-collapsed behavior.
-    const before = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
+    const before = `${Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n")}\n`;
     await fs.writeFile(path.join(dir, "long.txt"), before);
     await git("add", ".");
     await git("commit", "-q", "-m", "initial 30-line file");
     await git("checkout", "-q", "-b", "tiny-edit");
-    const after = Array.from({ length: 30 }, (_, i) => i === 14 ? "line 15 EDITED" : `line ${i + 1}`).join("\n") + "\n";
+    const after = `${Array.from({ length: 30 }, (_, i) =>
+      i === 14 ? "line 15 EDITED" : `line ${i + 1}`,
+    ).join("\n")}\n`;
     await fs.writeFile(path.join(dir, "long.txt"), after);
     await git("add", ".");
     await git("commit", "-q", "-m", "edit line 15");
@@ -114,13 +124,21 @@ export interface RunningBinary {
 
 export async function startBinary(opts: { cwd: string }): Promise<RunningBinary> {
   const port = await freePort();
-  const child = spawn(process.execPath, [BIN, "--no-browser", "--port", String(port), "--cwd", opts.cwd], {
-    env: { ...process.env, HOME: process.env.HOME ?? "/tmp" },
-  });
+  const child = spawn(
+    process.execPath,
+    [BIN, "--no-browser", "--port", String(port), "--cwd", opts.cwd],
+    {
+      env: { ...process.env, HOME: process.env.HOME ?? "/tmp" },
+    },
+  );
   let stdout = "";
   let stderr = "";
-  child.stdout.on("data", (b) => { stdout += b.toString(); });
-  child.stderr.on("data", (b) => { stderr += b.toString(); });
+  child.stdout.on("data", (b) => {
+    stdout += b.toString();
+  });
+  child.stderr.on("data", (b) => {
+    stderr += b.toString();
+  });
 
   const exit = new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
     child.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }));
@@ -163,9 +181,14 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
+  // biome-ignore lint/correctness/noEmptyPattern: Playwright fixtures require the destructured-deps object as the first arg; this fixture depends on none
   repo: async ({}, use, testInfo) => {
     const t = testInfo.title;
-    const scenario = t.includes("expand") ? "expandable" : t.includes("multi") ? "multifile" : "simple";
+    const scenario = t.includes("expand")
+      ? "expandable"
+      : t.includes("multi")
+        ? "multifile"
+        : "simple";
     const repo = await makeRepo(scenario);
     await use(repo);
     await fs.rm(repo.dir, { recursive: true, force: true });

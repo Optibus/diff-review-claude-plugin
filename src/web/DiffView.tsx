@@ -1,19 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ChangeData,
+  DiffType,
+  FileData,
+  HunkData,
+  HunkTokens,
+  ViewType,
+} from "react-diff-view";
 import {
+  computeNewLineNumber,
   Decoration,
   Diff,
-  Hunk,
-  computeNewLineNumber,
   findChangeByNewLineNumber,
   getChangeKey,
+  Hunk,
   parseDiff,
   tokenize,
   useSourceExpansion,
 } from "react-diff-view";
-import type { ChangeData, DiffType, FileData, HunkData, HunkTokens, ViewType } from "react-diff-view";
 import type { Draft } from "../cli/types";
-import { CommentThread } from "./CommentThread";
 import { api } from "./api";
+import { CommentThread } from "./CommentThread";
 import { displayPath } from "./paths";
 import { languageFor, refractor } from "./syntax";
 
@@ -58,11 +65,11 @@ export function DiffView({
   onDelete,
   registerFileAnchor,
 }: Props) {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-parse only when the diff text changes; onParsed is a stable notify-callback we deliberately exclude
   const files: FileData[] = useMemo(() => {
     const parsed = diffText.trim() ? parseDiff(diffText) : [];
     onParsed?.(parsed);
     return parsed;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diffText]);
 
   const draftsByFile = useMemo(() => {
@@ -116,7 +123,9 @@ interface PanelProps {
   registerFileAnchor: (key: string, el: HTMLElement | null) => void;
 }
 
-interface PendingAnchor { line: number }
+interface PendingAnchor {
+  line: number;
+}
 
 function FileDiffPanel({
   file,
@@ -141,9 +150,16 @@ function FileDiffPanel({
   // Track shift only while there's a pending anchor — that's the only time
   // the user might be about to extend a selection.
   useEffect(() => {
-    if (!pending) { setShiftHeld(false); return; }
-    const onDown = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
-    const onUp = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    if (!pending) {
+      setShiftHeld(false);
+      return;
+    }
+    const onDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(true);
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(false);
+    };
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
     return () => {
@@ -206,15 +222,18 @@ function FileDiffPanel({
     }
   }, [oldSource]);
 
-  const handleExpand = useCallback((start: number, end: number) => {
-    if (start > end) return;
-    if (oldSource !== null) {
-      expandRangeRef.current(start, end);
-      return;
-    }
-    queuedExpansions.current.push({ start, end });
-    void ensureOldSource();
-  }, [oldSource, ensureOldSource]);
+  const handleExpand = useCallback(
+    (start: number, end: number) => {
+      if (start > end) return;
+      if (oldSource !== null) {
+        expandRangeRef.current(start, end);
+        return;
+      }
+      queuedExpansions.current.push({ start, end });
+      void ensureOldSource();
+    },
+    [oldSource, ensureOldSource],
+  );
 
   // Build widgets keyed by change.
   const widgets: Record<string, React.ReactNode> = {};
@@ -321,7 +340,10 @@ function FileDiffPanel({
         const ln = computeNewLineNumber(c);
         if (ln < 0) continue;
         for (const [s, e] of ranges) {
-          if (ln >= s && ln <= e) { keys.push(getChangeKey(c)); break; }
+          if (ln >= s && ln <= e) {
+            keys.push(getChangeKey(c));
+            break;
+          }
         }
       }
     }
@@ -330,14 +352,13 @@ function FileDiffPanel({
 
   // Strip a single trailing newline before counting lines so a file ending
   // in "\n" reports its true line count (not +1 for the empty tail element).
-  const oldSourceLineCount = oldSource
-    ? oldSource.replace(/\n$/, "").split("\n").length
-    : null;
+  const oldSourceLineCount = oldSource ? oldSource.replace(/\n$/, "").split("\n").length : null;
   const diffType = (file.type ?? "modify") as DiffType;
 
   const showCollapsed = generated && !expandedGenerated;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: onMouseLeave only clears hover state for gutter affordances; the actual comment controls are real buttons
     <section
       className="filediff"
       ref={(el) => registerFileAnchor(path, el)}
@@ -346,13 +367,22 @@ function FileDiffPanel({
       <header className="filediff__header">
         <code>{path}</code>
         <span className="filediff__type">
-          {generated && <span className="filediff__generated" title="Marked linguist-generated in .gitattributes">generated</span>}
+          {generated && (
+            <span
+              className="filediff__generated"
+              title="Marked linguist-generated in .gitattributes"
+            >
+              generated
+            </span>
+          )}
           {file.type}
         </span>
       </header>
       {inFileOrphans.length > 0 && (
         <div className="filediff__orphans">
-          <strong>{inFileOrphans.length} comment(s) from other diff sources — switch source to see them.</strong>
+          <strong>
+            {inFileOrphans.length} comment(s) from other diff sources — switch source to see them.
+          </strong>
         </div>
       )}
       {showCollapsed ? (
@@ -375,12 +405,9 @@ function FileDiffPanel({
           selectedChanges={selectedChanges}
           gutterEvents={{ onClick: handleGutterClick, onMouseEnter: handleGutterEnter }}
         >
-          {(visibleHunks) => renderHunksWithExpand(
-            visibleHunks,
-            oldSourceLineCount,
-            oldSourceStatus,
-            handleExpand,
-          )}
+          {(visibleHunks) =>
+            renderHunksWithExpand(visibleHunks, oldSourceLineCount, oldSourceStatus, handleExpand)
+          }
         </Diff>
       )}
     </section>
@@ -418,12 +445,15 @@ function renderHunksWithExpand(
       elements.push(
         <Decoration key={`expand-${i}`}>
           <button
+            type="button"
             className="expand-btn"
             disabled={oldSourceStatus === "missing"}
             onClick={() => handleExpand(rangeStart, rangeEnd)}
             title={oldSourceStatus === "missing" ? "File content unavailable on this side" : ""}
           >
-            {oldSourceStatus === "loading" ? "Loading…" : `↕ Expand ${gap} hidden line${gap === 1 ? "" : "s"}`}
+            {oldSourceStatus === "loading"
+              ? "Loading…"
+              : `↕ Expand ${gap} hidden line${gap === 1 ? "" : "s"}`}
           </button>
         </Decoration>,
       );
@@ -431,7 +461,9 @@ function renderHunksWithExpand(
 
     elements.push(
       <Decoration key={`hdr-${i}`}>
-        <div className="hunk-header">@@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@</div>
+        <div className="hunk-header">
+          @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines} @@
+        </div>
       </Decoration>,
     );
     elements.push(<Hunk key={`hunk-${i}`} hunk={hunk} />);
@@ -440,13 +472,14 @@ function renderHunksWithExpand(
   // Decoration AFTER the last hunk if there's content remaining in oldSource.
   if (oldSourceLineCount !== null && hunks.length > 0) {
     const last = hunks[hunks.length - 1];
-    const lastEndExclusive = last.oldStart + last.oldLines;       // first hidden line
-    const sourceEndExclusive = oldSourceLineCount + 1;             // one past EOF
+    const lastEndExclusive = last.oldStart + last.oldLines; // first hidden line
+    const sourceEndExclusive = oldSourceLineCount + 1; // one past EOF
     const after = sourceEndExclusive - lastEndExclusive;
     if (after > 0) {
       elements.push(
         <Decoration key="expand-end">
           <button
+            type="button"
             className="expand-btn"
             onClick={() => handleExpand(lastEndExclusive, sourceEndExclusive)}
           >
@@ -462,6 +495,7 @@ function renderHunksWithExpand(
     elements.push(
       <Decoration key="expand-end-unknown">
         <button
+          type="button"
           className="expand-btn expand-btn--probe"
           onClick={() => handleExpand(lastEndExclusive, lastEndExclusive + 20)}
         >

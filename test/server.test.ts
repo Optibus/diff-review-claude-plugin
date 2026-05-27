@@ -1,9 +1,9 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { promisify } from "node:util";
 import path from "node:path";
+import { test } from "node:test";
+import { promisify } from "node:util";
 import { createServer } from "../src/cli/server.js";
 import { repoFingerprint, storageDir } from "../src/cli/storage.js";
 import type { SubmissionResult } from "../src/cli/types.js";
@@ -41,11 +41,15 @@ async function makeRepo(): Promise<string> {
 async function startHarness(): Promise<Harness> {
   const cwd = await makeRepo();
   const absGitDir = (await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd })).stdout.trim();
-  const fingerprint = repoFingerprint(absGitDir + ":" + Math.random()); // unique per test
-  try { await fs.rm(storageDir(fingerprint), { recursive: true, force: true }); } catch {}
-  const token = "test-token-" + Math.random().toString(36).slice(2);
+  const fingerprint = repoFingerprint(`${absGitDir}:${Math.random()}`); // unique per test
+  try {
+    await fs.rm(storageDir(fingerprint), { recursive: true, force: true });
+  } catch {}
+  const token = `test-token-${Math.random().toString(36).slice(2)}`;
   let resolver!: (r: SubmissionResult) => void;
-  const resolved = new Promise<SubmissionResult>((r) => { resolver = r; });
+  const resolved = new Promise<SubmissionResult>((r) => {
+    resolver = r;
+  });
   const server = await createServer({
     cwd,
     fingerprint,
@@ -63,7 +67,9 @@ async function startHarness(): Promise<Harness> {
     close: async () => {
       await server.close();
       await fs.rm(cwd, { recursive: true, force: true });
-      try { await fs.rm(storageDir(fingerprint), { recursive: true, force: true }); } catch {}
+      try {
+        await fs.rm(storageDir(fingerprint), { recursive: true, force: true });
+      } catch {}
     },
   };
 }
@@ -81,7 +87,9 @@ test("GET / returns the HTML", async () => {
     assert.match(r.headers.get("content-type") ?? "", /text\/html/);
     const body = await r.text();
     assert.match(body, /<html>UI<\/html>/);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("API requires token", async () => {
@@ -89,7 +97,9 @@ test("API requires token", async () => {
   try {
     const r = await fetch(`http://127.0.0.1:${h.port}/api/drafts`);
     assert.equal(r.status, 401);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("API accepts token via query and via X-Token header", async () => {
@@ -97,16 +107,20 @@ test("API accepts token via query and via X-Token header", async () => {
   try {
     const r1 = await api(h, "/api/drafts");
     assert.equal(r1.status, 200);
-    const r2 = await fetch(`http://127.0.0.1:${h.port}/api/drafts`, { headers: { "X-Token": h.token } });
+    const r2 = await fetch(`http://127.0.0.1:${h.port}/api/drafts`, {
+      headers: { "X-Token": h.token },
+    });
     assert.equal(r2.status, 200);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/diff-sources includes branch and uncommitted options, default first", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/diff-sources");
-    const body = await r.json() as { sources: { id: string; kind: string }[] };
+    const body = (await r.json()) as { sources: { id: string; kind: string }[] };
     const ids = body.sources.map((s) => s.id);
     assert.ok(ids.includes("branch"));
     assert.ok(ids.includes("branch-with-uncommitted"));
@@ -114,19 +128,23 @@ test("GET /api/diff-sources includes branch and uncommitted options, default fir
     assert.ok(ids.some((id) => id.startsWith("commit:")));
     // Default (first) should be the full branch diff including uncommitted work.
     assert.equal(body.sources[0].id, "branch-with-uncommitted");
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/diff?source=branch returns committed diff only", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/diff?source=branch");
-    const body = await r.json() as { diff: string; files: string[] };
+    const body = (await r.json()) as { diff: string; files: string[] };
     assert.match(body.diff, /diff --git a\/a\.txt/);
     assert.match(body.diff, /BETA/);
     assert.doesNotMatch(body.diff, /epsilon/);
     assert.deepEqual(body.files, ["a.txt"]);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/diff against an advanced base excludes commits that landed on base after divergence (merge-base semantics)", async () => {
@@ -157,19 +175,28 @@ test("GET /api/diff against an advanced base excludes commits that landed on bas
     // Back on feat — main now has commits feat doesn't.
     await g("checkout", "-q", "feat");
 
-    const absGitDir = (await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir })).stdout.trim();
-    const fingerprint = repoFingerprint(absGitDir + ":" + Math.random());
-    try { await fs.rm(storageDir(fingerprint), { recursive: true, force: true }); } catch {}
+    const absGitDir = (
+      await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir })
+    ).stdout.trim();
+    const fingerprint = repoFingerprint(`${absGitDir}:${Math.random()}`);
+    try {
+      await fs.rm(storageDir(fingerprint), { recursive: true, force: true });
+    } catch {}
     const token = "mb-token";
     let resolver!: (r: SubmissionResult) => void;
-    const resolved = new Promise<SubmissionResult>((r) => { resolver = r; });
+    const resolved = new Promise<SubmissionResult>((r) => {
+      resolver = r;
+    });
     const server = await createServer({
-      cwd: dir, fingerprint, html: "<html>UI</html>", token,
+      cwd: dir,
+      fingerprint,
+      html: "<html>UI</html>",
+      token,
       onResolve: (r) => resolver(r),
     });
     try {
       const r = await fetch(`http://127.0.0.1:${server.port}/api/diff?source=branch&t=${token}`);
-      const body = await r.json() as { diff: string; files: string[] };
+      const body = (await r.json()) as { diff: string; files: string[] };
       // Only the feat branch's own file should appear; main's later
       // commit must NOT show up because we diff from the merge-base.
       assert.deepEqual(body.files, ["feat.txt"]);
@@ -188,24 +215,37 @@ test("GET /api/diff?source=uncommitted returns working tree only", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/diff?source=uncommitted");
-    const body = await r.json() as { diff: string };
+    const body = (await r.json()) as { diff: string };
     assert.match(body.diff, /epsilon/);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("PUT and GET /api/drafts round-trip", async () => {
   const h = await startHarness();
   try {
     const id = "a.txt:1:3:RIGHT";
-    const draft = { file: "a.txt", startLine: 1, endLine: 3, side: "RIGHT", body: "rename this", sourceId: "branch" };
+    const draft = {
+      file: "a.txt",
+      startLine: 1,
+      endLine: 3,
+      side: "RIGHT",
+      body: "rename this",
+      sourceId: "branch",
+    };
     const put = await api(h, `/api/drafts/${encodeURIComponent(id)}`, {
-      method: "PUT", body: JSON.stringify(draft), headers: { "content-type": "application/json" },
+      method: "PUT",
+      body: JSON.stringify(draft),
+      headers: { "content-type": "application/json" },
     });
     assert.equal(put.status, 200);
     const list = await api(h, "/api/drafts");
-    const store = await list.json() as { comments: Record<string, { body: string }> };
+    const store = (await list.json()) as { comments: Record<string, { body: string }> };
     assert.equal(store.comments[id].body, "rename this");
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("DELETE /api/drafts/:id removes the draft", async () => {
@@ -214,42 +254,59 @@ test("DELETE /api/drafts/:id removes the draft", async () => {
     const id = "a.txt:2:2:RIGHT";
     await api(h, `/api/drafts/${encodeURIComponent(id)}`, {
       method: "PUT",
-      body: JSON.stringify({ file: "a.txt", startLine: 2, endLine: 2, side: "RIGHT", body: "x", sourceId: "branch" }),
+      body: JSON.stringify({
+        file: "a.txt",
+        startLine: 2,
+        endLine: 2,
+        side: "RIGHT",
+        body: "x",
+        sourceId: "branch",
+      }),
       headers: { "content-type": "application/json" },
     });
     const del = await api(h, `/api/drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
     assert.equal(del.status, 200);
     const list = await api(h, "/api/drafts");
-    const store = await list.json() as { comments: Record<string, unknown> };
+    const store = (await list.json()) as { comments: Record<string, unknown> };
     assert.equal(store.comments[id], undefined);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("PUT /api/summary stores the summary", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/summary", {
-      method: "PUT", body: JSON.stringify({ summary: "lgtm" }), headers: { "content-type": "application/json" },
+      method: "PUT",
+      body: JSON.stringify({ summary: "lgtm" }),
+      headers: { "content-type": "application/json" },
     });
     assert.equal(r.status, 200);
     const list = await api(h, "/api/drafts");
-    const store = await list.json() as { summary: string };
+    const store = (await list.json()) as { summary: string };
     assert.equal(store.summary, "lgtm");
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("POST /api/submit resolves the server with current store", async () => {
   const h = await startHarness();
   try {
     await api(h, "/api/summary", {
-      method: "PUT", body: JSON.stringify({ summary: "approved" }), headers: { "content-type": "application/json" },
+      method: "PUT",
+      body: JSON.stringify({ summary: "approved" }),
+      headers: { "content-type": "application/json" },
     });
     const r = await api(h, "/api/submit", { method: "POST" });
     assert.equal(r.status, 200);
     const result = await h.resolved;
     assert.equal(result.cancelled, false);
     assert.equal(result.store?.summary, "approved");
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("POST /api/cancel resolves the server as cancelled", async () => {
@@ -259,7 +316,9 @@ test("POST /api/cancel resolves the server as cancelled", async () => {
     assert.equal(r.status, 200);
     const result = await h.resolved;
     assert.equal(result.cancelled, true);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/source returns file content for the old side", async () => {
@@ -267,9 +326,11 @@ test("GET /api/source returns file content for the old side", async () => {
   try {
     const r = await api(h, "/api/source?source=branch&path=a.txt&side=old");
     assert.equal(r.status, 200);
-    const body = await r.json() as { content: string | null };
+    const body = (await r.json()) as { content: string | null };
     assert.match(body.content ?? "", /alpha\nbeta\ngamma/);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/source returns null content for a file that didn't exist on a side", async () => {
@@ -278,9 +339,11 @@ test("GET /api/source returns null content for a file that didn't exist on a sid
     // a.txt didn't exist at base+1 commits; this is the initial state.
     const r = await api(h, "/api/source?source=branch&path=nonexistent.txt&side=old");
     assert.equal(r.status, 200);
-    const body = await r.json() as { content: string | null };
+    const body = (await r.json()) as { content: string | null };
     assert.equal(body.content, null);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("GET /api/source rejects ../ path-traversal attempts", async () => {
@@ -288,18 +351,23 @@ test("GET /api/source rejects ../ path-traversal attempts", async () => {
   try {
     const r = await api(h, "/api/source?source=branch&path=../etc/passwd&side=old");
     assert.equal(r.status, 400);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });
 
 test("PUT /api/drafts rejects invalid payload", async () => {
   const h = await startHarness();
   try {
     const r = await api(h, "/api/drafts/x.ts:1:1:RIGHT", {
-      method: "PUT", body: JSON.stringify({ file: "", startLine: 0, endLine: 0, body: "x" }),
+      method: "PUT",
+      body: JSON.stringify({ file: "", startLine: 0, endLine: 0, body: "x" }),
       headers: { "content-type": "application/json" },
     });
     assert.equal(r.status, 500);
-    const body = await r.json() as { error: string };
+    const body = (await r.json()) as { error: string };
     assert.match(body.error, /required|positive/);
-  } finally { await h.close(); }
+  } finally {
+    await h.close();
+  }
 });

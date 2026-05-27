@@ -1,11 +1,15 @@
-import { createServer as createHttpServer, IncomingMessage, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { AddressInfo } from "node:net";
+import {
+  createServer as createHttpServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
 import * as git from "./git.js";
 import * as storage from "./storage.js";
-import type { Draft, DiffSource, SubmissionResult } from "./types.js";
+import type { DiffSource, Draft, SubmissionResult } from "./types.js";
 
 export interface ServerDeps {
   cwd: string;
@@ -30,7 +34,12 @@ export interface RunningServer {
 const IDLE_TIMEOUT_MS = 60_000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
 
-function send(res: ServerResponse, status: number, body: string, contentType = "text/plain; charset=utf-8") {
+function send(
+  res: ServerResponse,
+  status: number,
+  body: string,
+  contentType = "text/plain; charset=utf-8",
+) {
   res.writeHead(status, {
     "Content-Type": contentType,
     "Cache-Control": "no-store",
@@ -76,8 +85,10 @@ function parseDraftPayload(input: unknown, idFromUrl: string): Draft {
   const sourceLabel = typeof r.sourceLabel === "string" ? r.sourceLabel : undefined;
   const lineSnippet = typeof r.lineSnippet === "string" ? r.lineSnippet : undefined;
   if (!file) throw new Error("draft.file required");
-  if (!Number.isInteger(startLine) || startLine < 1) throw new Error("draft.startLine must be positive integer");
-  if (!Number.isInteger(endLine) || endLine < startLine) throw new Error("draft.endLine must be >= startLine");
+  if (!Number.isInteger(startLine) || startLine < 1)
+    throw new Error("draft.startLine must be positive integer");
+  if (!Number.isInteger(endLine) || endLine < startLine)
+    throw new Error("draft.endLine must be >= startLine");
   // Trust idFromUrl as the canonical id.
   return {
     id: idFromUrl,
@@ -134,7 +145,9 @@ async function listDiffSources(cwd: string): Promise<DiffSource[]> {
           commit: c.sha,
         });
       }
-    } catch {/* ignore */}
+    } catch {
+      /* ignore */
+    }
   }
   return sources;
 }
@@ -292,7 +305,8 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         const side = url.searchParams.get("side") === "new" ? "new" : "old";
         const source = await sourceById(sourceId);
         if (!source) return sendJson(res, 404, { error: "unknown source" });
-        if (!filePath || filePath.includes("..")) return sendJson(res, 400, { error: "invalid path" });
+        if (!filePath || filePath.includes(".."))
+          return sendJson(res, 400, { error: "invalid path" });
         const refs = await sourceToRefs(source, cwd);
         const ref = side === "new" ? refs.new : refs.old;
         if (ref === null) return sendJson(res, 200, { content: null });
@@ -363,8 +377,16 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         // Enforce single active tab: any existing SSE clients are sent a
         // "superseded" event and closed before the new one joins.
         for (const old of sseClients) {
-          try { old.write(`event: superseded\ndata: {}\n\n`); } catch { /* dead */ }
-          try { old.end(); } catch { /* ignore */ }
+          try {
+            old.write(`event: superseded\ndata: {}\n\n`);
+          } catch {
+            /* dead */
+          }
+          try {
+            old.end();
+          } catch {
+            /* ignore */
+          }
         }
         sseClients.clear();
 
@@ -376,7 +398,11 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
         res.write(`event: hello\ndata: {}\n\n`);
         sseClients.add(res);
         const heartbeat = setInterval(() => {
-          try { res.write(`:ping\n\n`); } catch { /* dead client */ }
+          try {
+            res.write(`:ping\n\n`);
+          } catch {
+            /* dead client */
+          }
         }, HEARTBEAT_INTERVAL_MS);
         const cleanup = () => {
           clearInterval(heartbeat);
@@ -398,7 +424,11 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
 
   const server = createHttpServer((req, res) => {
     Promise.resolve(handler(req, res)).catch((e: Error) => {
-      try { sendJson(res, 500, { error: e.message }); } catch { /* response already sent */ }
+      try {
+        sendJson(res, 500, { error: e.message });
+      } catch {
+        /* response already sent */
+      }
     });
   });
 
@@ -415,7 +445,11 @@ export function createServer(deps: ServerDeps): Promise<RunningServer> {
           new Promise<void>((res) => {
             if (idleTimer) clearTimeout(idleTimer);
             for (const c of sseClients) {
-              try { c.end(); } catch { /* ignore */ }
+              try {
+                c.end();
+              } catch {
+                /* ignore */
+              }
             }
             sseClients.clear();
             server.close(() => res());

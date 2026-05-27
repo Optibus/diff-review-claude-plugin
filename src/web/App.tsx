@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { computeNewLineNumber, computeOldLineNumber } from "react-diff-view";
 import type { ChangeData, FileData, ViewType } from "react-diff-view";
+import { computeNewLineNumber, computeOldLineNumber } from "react-diff-view";
+import type { DiffSource, Draft, DraftStore } from "../cli/types";
 import { api, openEventStream } from "./api";
 import { DiffSourcePicker } from "./DiffSourcePicker";
-import { FileTree } from "./FileTree";
 import { DiffView } from "./DiffView";
-import { SubmitPopover } from "./SubmitPopover";
+import { FileTree } from "./FileTree";
 import { displayPath } from "./paths";
-import type { DiffSource, Draft, DraftStore } from "../cli/types";
+import { SubmitPopover } from "./SubmitPopover";
 
 function snippetFor(
   files: FileData[],
@@ -136,9 +136,10 @@ export function App() {
         side: existing?.side ?? side,
         body,
         sourceId: currentSource,
-        sourceLabel: state.kind === "ready"
-          ? state.sources.find((s) => s.id === currentSource)?.label
-          : undefined,
+        sourceLabel:
+          state.kind === "ready"
+            ? state.sources.find((s) => s.id === currentSource)?.label
+            : undefined,
         lineSnippet: snippetFor(files, file, startLine, endLine, side),
       };
       const saved = await api.saveDraft(id, draft);
@@ -147,24 +148,18 @@ export function App() {
     [drafts, currentSource, files, state],
   );
 
-  const onDeleteDraft = useCallback(
-    async (id: string) => {
-      await api.deleteDraft(id);
-      setDrafts((d) => {
-        const { [id]: _omit, ...rest } = d.comments;
-        return { ...d, comments: rest };
-      });
-    },
-    [],
-  );
+  const onDeleteDraft = useCallback(async (id: string) => {
+    await api.deleteDraft(id);
+    setDrafts((d) => {
+      const { [id]: _omit, ...rest } = d.comments;
+      return { ...d, comments: rest };
+    });
+  }, []);
 
-  const onSaveSummary = useCallback(
-    async (summary: string) => {
-      await api.saveSummary(summary);
-      setDrafts((d) => ({ ...d, summary }));
-    },
-    [],
-  );
+  const onSaveSummary = useCallback(async (summary: string) => {
+    await api.saveSummary(summary);
+    setDrafts((d) => ({ ...d, summary }));
+  }, []);
 
   const onSubmit = useCallback(async () => {
     setBusy(true);
@@ -220,7 +215,8 @@ export function App() {
   }, [drafts, doCancel]);
 
   if (state.kind === "loading") return <div className="bigmsg">Loading…</div>;
-  if (state.kind === "error") return <div className="bigmsg bigmsg--error">Error: {state.message}</div>;
+  if (state.kind === "error")
+    return <div className="bigmsg bigmsg--error">Error: {state.message}</div>;
   if (state.kind === "submitted")
     return (
       <div className="bigmsg bigmsg--good">
@@ -232,14 +228,19 @@ export function App() {
     return (
       <div className="bigmsg">
         <h1>Review cancelled.</h1>
-        <p>Your drafts are saved. Run <code>/diff-review</code> again to resume.</p>
+        <p>
+          Your drafts are saved. Run <code>/diff-review</code> again to resume.
+        </p>
       </div>
     );
   if (state.kind === "superseded")
     return (
       <div className="bigmsg">
         <h1>This review is now open in another tab.</h1>
-        <p>Only one tab at a time can edit a review. Switch to the newer tab or close this one — your drafts are safe on disk.</p>
+        <p>
+          Only one tab at a time can edit a review. Switch to the newer tab or close this one — your
+          drafts are safe on disk.
+        </p>
       </div>
     );
 
@@ -265,7 +266,8 @@ export function App() {
               value="unified"
               checked={viewType === "unified"}
               onChange={() => setViewType("unified")}
-            /> Unified
+            />{" "}
+            Unified
           </label>
           <label className="viewtype">
             <input
@@ -274,19 +276,29 @@ export function App() {
               value="split"
               checked={viewType === "split"}
               onChange={() => setViewType("split")}
-            /> Split
+            />{" "}
+            Split
           </label>
         </div>
         <div className="topbar__right">
-          <span className="topbar__count">{totalComments} comment{totalComments === 1 ? "" : "s"}</span>
+          <span className="topbar__count">
+            {totalComments} comment{totalComments === 1 ? "" : "s"}
+          </span>
           <button
+            type="button"
             onClick={onClearAllClick}
             disabled={busy || totalComments === 0}
-            title={totalComments === 0 ? "No comments to clear" : "Delete every saved comment in this review"}
+            title={
+              totalComments === 0
+                ? "No comments to clear"
+                : "Delete every saved comment in this review"
+            }
           >
             Clear all comments
           </button>
-          <button onClick={onDiscardClick} disabled={busy}>Discard</button>
+          <button type="button" onClick={onDiscardClick} disabled={busy}>
+            Discard
+          </button>
           <SubmitPopover
             initialSummary={drafts.summary}
             onSaveSummary={onSaveSummary}
@@ -300,15 +312,26 @@ export function App() {
       {confirmingDiscard && (
         <div className="confirm-bar">
           <span>Discard this review? Drafts remain saved for next time.</span>
-          <button onClick={() => void doCancel()} disabled={busy}>Yes, discard</button>
-          <button onClick={() => setConfirmingDiscard(false)} disabled={busy}>Keep editing</button>
+          <button type="button" onClick={() => void doCancel()} disabled={busy}>
+            Yes, discard
+          </button>
+          <button type="button" onClick={() => setConfirmingDiscard(false)} disabled={busy}>
+            Keep editing
+          </button>
         </div>
       )}
       {confirmingClearAll && (
         <div className="confirm-bar">
-          <span>Delete all {totalComments} saved comment{totalComments === 1 ? "" : "s"}? The overall summary will be kept. This can't be undone.</span>
-          <button onClick={() => void doClearAll()} disabled={busy}>Yes, clear comments</button>
-          <button onClick={() => setConfirmingClearAll(false)} disabled={busy}>Cancel</button>
+          <span>
+            Delete all {totalComments} saved comment{totalComments === 1 ? "" : "s"}? The overall
+            summary will be kept. This can't be undone.
+          </span>
+          <button type="button" onClick={() => void doClearAll()} disabled={busy}>
+            Yes, clear comments
+          </button>
+          <button type="button" onClick={() => setConfirmingClearAll(false)} disabled={busy}>
+            Cancel
+          </button>
         </div>
       )}
       <main className="main">
@@ -332,7 +355,9 @@ export function App() {
             onStartComment={onStartComment}
             onSave={onSaveDraft}
             onDelete={onDeleteDraft}
-            registerFileAnchor={(key, el) => { fileRefs.current[key] = el; }}
+            registerFileAnchor={(key, el) => {
+              fileRefs.current[key] = el;
+            }}
           />
         </div>
       </main>

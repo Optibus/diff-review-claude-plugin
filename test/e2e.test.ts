@@ -1,10 +1,10 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
-import { spawn, execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { promisify } from "node:util";
 import path from "node:path";
-import { repoFingerprint, storageDir, saveDrafts } from "../src/cli/storage.js";
+import { test } from "node:test";
+import { promisify } from "node:util";
+import { repoFingerprint, saveDrafts, storageDir } from "../src/cli/storage.js";
 
 const exec = promisify(execFile);
 
@@ -23,21 +23,31 @@ async function makeRepo(): Promise<{ dir: string; fp: string }> {
   await fs.writeFile(path.join(dir, "hello.txt"), "hello\nWORLD\ngoodbye\n");
   await g("add", ".");
   await g("commit", "-q", "-m", "topic edit");
-  const absGit = (await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir })).stdout.trim();
+  const absGit = (
+    await exec("git", ["rev-parse", "--absolute-git-dir"], { cwd: dir })
+  ).stdout.trim();
   return { dir, fp: repoFingerprint(absGit) };
 }
 
 async function cleanup(dir: string, fp: string) {
-  try { await fs.rm(dir, { recursive: true, force: true }); } catch {}
-  try { await fs.rm(storageDir(fp), { recursive: true, force: true }); } catch {}
+  try {
+    await fs.rm(dir, { recursive: true, force: true });
+  } catch {}
+  try {
+    await fs.rm(storageDir(fp), { recursive: true, force: true });
+  } catch {}
 }
 
-function runBinary(args: string[], cwd: string): Promise<{ code: number; stdout: string; stderr: string }> {
+function runBinary(
+  args: string[],
+  cwd: string,
+): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [BIN, ...args], { cwd, env: { ...process.env } });
-    let stdout = ""; let stderr = "";
-    child.stdout.on("data", (b) => stdout += b);
-    child.stderr.on("data", (b) => stderr += b);
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (b) => (stdout += b));
+    child.stderr.on("data", (b) => (stderr += b));
     child.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }));
   });
 }
@@ -48,7 +58,9 @@ test("e2e: --auto-submit with no drafts → empty review sentinel on stdout, exi
     const r = await runBinary(["--auto-submit", "--no-browser"], dir);
     assert.equal(r.code, 0);
     assert.match(r.stdout, /\(empty review\)/);
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });
 
 test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts cleared", async () => {
@@ -89,11 +101,18 @@ test("e2e: --auto-submit with seeded drafts → markdown stdout, exit 0, drafts 
     assert.match(r.stdout, /^# Code review feedback/);
     assert.match(r.stdout, /## Overall\n\nlooks great overall/);
     assert.match(r.stdout, /### hello\.txt:2 \(topic vs main\)\n\n> WORLD\n\nuse lowercase/);
-    assert.match(r.stdout, /### hello\.txt:3 \(topic vs main\)\n\n> goodbye\n\nspell-check 'goodbye'/);
+    assert.match(
+      r.stdout,
+      /### hello\.txt:3 \(topic vs main\)\n\n> goodbye\n\nspell-check 'goodbye'/,
+    );
     // Drafts should be cleared after a successful submit.
-    const drafted = await fs.readFile(path.join(storageDir(fp), "drafts.json"), "utf8").catch(() => null);
+    const drafted = await fs
+      .readFile(path.join(storageDir(fp), "drafts.json"), "utf8")
+      .catch(() => null);
     assert.equal(drafted, null);
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });
 
 test("e2e: second invocation while one is running reconnects to the existing session", async () => {
@@ -107,7 +126,10 @@ test("e2e: second invocation while one is running reconnects to the existing ses
     const ready = new Promise<void>((resolve) => {
       child.stderr.on("data", (b) => {
         const m = String(b).match(/open (http:\/\/127\.0\.0\.1:\d+\/\?t=[a-f0-9]+)/);
-        if (m) { firstUrl = m[1]; resolve(); }
+        if (m) {
+          firstUrl = m[1];
+          resolve();
+        }
       });
     });
     await ready;
@@ -118,11 +140,16 @@ test("e2e: second invocation while one is running reconnects to the existing ses
     assert.match(r.stdout, /^\(reconnected/);
     // Stderr points at the same URL the first instance is serving.
     assert.ok(firstUrl);
-    assert.ok(r.stderr.includes(firstUrl), `expected stderr to mention ${firstUrl}, got: ${r.stderr}`);
+    assert.ok(
+      r.stderr.includes(firstUrl),
+      `expected stderr to mention ${firstUrl}, got: ${r.stderr}`,
+    );
 
     child.kill("SIGINT");
     await new Promise((res) => child.on("close", res));
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });
 
 test("e2e: lock held by live PID with no instance.json prints an actionable error", async () => {
@@ -139,7 +166,9 @@ test("e2e: lock held by live PID with no instance.json prints an actionable erro
     assert.equal(r.code, 1);
     assert.match(r.stderr, /older version|kill /);
     assert.match(r.stderr, new RegExp(`kill ${process.pid}`));
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });
 
 test("e2e: full HTTP flow — start server, save draft via fetch, submit", async () => {
@@ -152,8 +181,8 @@ test("e2e: full HTTP flow — start server, save draft via fetch, submit", async
 
     let stdoutBuf = "";
     let stderrBuf = "";
-    child.stdout.on("data", (b) => stdoutBuf += b);
-    child.stderr.on("data", (b) => stderrBuf += b);
+    child.stdout.on("data", (b) => (stdoutBuf += b));
+    child.stderr.on("data", (b) => (stderrBuf += b));
 
     const url = await new Promise<string>((resolve, reject) => {
       const onErr = (e: Error) => reject(e);
@@ -177,33 +206,47 @@ test("e2e: full HTTP flow — start server, save draft via fetch, submit", async
 
     // GET /api/diff-sources
     const srcs = await fetch(`http://127.0.0.1:${port}/api/diff-sources?t=${token}`);
-    const sBody = await srcs.json() as { sources: { id: string }[] };
+    const sBody = (await srcs.json()) as { sources: { id: string }[] };
     assert.ok(sBody.sources.length > 0);
 
     // GET /api/diff?source=branch
     const diff = await fetch(`http://127.0.0.1:${port}/api/diff?source=branch&t=${token}`);
-    const dBody = await diff.json() as { diff: string; files: string[] };
+    const dBody = (await diff.json()) as { diff: string; files: string[] };
     assert.match(dBody.diff, /WORLD/);
     assert.deepEqual(dBody.files, ["hello.txt"]);
 
     // PUT a draft
     const id = "hello.txt:2:2:RIGHT";
-    const put = await fetch(`http://127.0.0.1:${port}/api/drafts/${encodeURIComponent(id)}?t=${token}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ file: "hello.txt", startLine: 2, endLine: 2, side: "RIGHT", body: "needs lowercase", sourceId: "branch" }),
-    });
+    const put = await fetch(
+      `http://127.0.0.1:${port}/api/drafts/${encodeURIComponent(id)}?t=${token}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          file: "hello.txt",
+          startLine: 2,
+          endLine: 2,
+          side: "RIGHT",
+          body: "needs lowercase",
+          sourceId: "branch",
+        }),
+      },
+    );
     assert.equal(put.status, 200);
 
     // POST /api/submit
-    const submit = await fetch(`http://127.0.0.1:${port}/api/submit?t=${token}`, { method: "POST" });
+    const submit = await fetch(`http://127.0.0.1:${port}/api/submit?t=${token}`, {
+      method: "POST",
+    });
     assert.equal(submit.status, 200);
 
     // Process should exit cleanly with markdown on stdout
     const code = await new Promise<number>((res) => child.on("close", (c) => res(c ?? -1)));
     assert.equal(code, 0, `stderr was: ${stderrBuf}`);
     assert.match(stdoutBuf, /needs lowercase/);
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });
 
 test("e2e: cancel via POST /api/cancel exits 0 with sentinel on stdout", async () => {
@@ -211,7 +254,7 @@ test("e2e: cancel via POST /api/cancel exits 0 with sentinel on stdout", async (
   try {
     const child = spawn(process.execPath, [BIN, "--no-browser"], { cwd: dir });
     let stdoutBuf = "";
-    child.stdout.on("data", (b) => stdoutBuf += b);
+    child.stdout.on("data", (b) => (stdoutBuf += b));
 
     const url = await new Promise<string>((resolve) => {
       child.stderr.on("data", (b) => {
@@ -227,5 +270,7 @@ test("e2e: cancel via POST /api/cancel exits 0 with sentinel on stdout", async (
     const code = await new Promise<number>((res) => child.on("close", (c) => res(c ?? -1)));
     assert.equal(code, 0);
     assert.match(stdoutBuf, /\(review cancelled\)/);
-  } finally { await cleanup(dir, fp); }
+  } finally {
+    await cleanup(dir, fp);
+  }
 });

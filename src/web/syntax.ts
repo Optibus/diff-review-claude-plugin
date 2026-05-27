@@ -8,13 +8,13 @@ import css from "refractor/lang/css.js";
 import diff from "refractor/lang/diff.js";
 import go from "refractor/lang/go.js";
 import graphql from "refractor/lang/graphql.js";
-import markup from "refractor/lang/markup.js";
 import java from "refractor/lang/java.js";
 import javascript from "refractor/lang/javascript.js";
 import json from "refractor/lang/json.js";
 import jsx from "refractor/lang/jsx.js";
 import kotlin from "refractor/lang/kotlin.js";
 import markdown from "refractor/lang/markdown.js";
+import markup from "refractor/lang/markup.js";
 import python from "refractor/lang/python.js";
 import ruby from "refractor/lang/ruby.js";
 import rust from "refractor/lang/rust.js";
@@ -26,10 +26,30 @@ import typescript from "refractor/lang/typescript.js";
 import yaml from "refractor/lang/yaml.js";
 
 [
-  bash, css, diff, go, graphql, markup, java, javascript, json, jsx,
-  kotlin, markdown, python, ruby, rust, sql, swift, toml, tsx,
-  typescript, yaml,
-].forEach((lang) => refractor.register(lang));
+  bash,
+  css,
+  diff,
+  go,
+  graphql,
+  markup,
+  java,
+  javascript,
+  json,
+  jsx,
+  kotlin,
+  markdown,
+  python,
+  ruby,
+  rust,
+  sql,
+  swift,
+  toml,
+  tsx,
+  typescript,
+  yaml,
+].forEach((lang) => {
+  refractor.register(lang);
+});
 
 export { refractor };
 

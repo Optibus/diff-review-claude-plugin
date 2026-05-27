@@ -9,7 +9,10 @@ export interface InstanceInfo {
 }
 
 export class LockError extends Error {
-  constructor(message: string, public pid?: number) {
+  constructor(
+    message: string,
+    public pid?: number,
+  ) {
     super(message);
     this.name = "LockError";
   }
@@ -105,7 +108,9 @@ export function openBrowser(url: string): void {
   }
   try {
     const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
-    child.on("error", () => {/* user can copy the URL */});
+    child.on("error", () => {
+      /* user can copy the URL */
+    });
     child.unref();
   } catch {
     // Browser open is best-effort.

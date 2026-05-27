@@ -1,11 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
+import { EMBEDDED_HTML } from "./embedded.js";
 import * as git from "./git.js";
-import { acquireLock, openBrowser, readInstance, releaseLock, writeInstance, LockError } from "./lifecycle.js";
+import {
+  acquireLock,
+  LockError,
+  openBrowser,
+  readInstance,
+  releaseLock,
+  writeInstance,
+} from "./lifecycle.js";
+import { formatReview } from "./output.js";
 import { createServer } from "./server.js";
 import { clearDrafts, loadDrafts, repoFingerprint } from "./storage.js";
-import { formatReview } from "./output.js";
-import { EMBEDDED_HTML } from "./embedded.js";
 import type { SubmissionResult } from "./types.js";
 
 interface ParsedArgs {
@@ -110,8 +117,8 @@ async function main(): Promise<number> {
       // user something they can act on.
       process.stderr.write(
         `diff-review: another diff-review is running (PID ${e.pid ?? "?"}) but I can't recover its URL` +
-        ` — likely an older version of the plugin. Either submit/discard it from its open browser tab,` +
-        ` or free the lock with: kill ${e.pid ?? "<pid>"}\n`,
+          ` — likely an older version of the plugin. Either submit/discard it from its open browser tab,` +
+          ` or free the lock with: kill ${e.pid ?? "<pid>"}\n`,
       );
       return 1;
     }
@@ -121,7 +128,9 @@ async function main(): Promise<number> {
   const token = randomBytes(32).toString("hex");
 
   let submissionResolver: ((r: SubmissionResult) => void) | null = null;
-  const submission = new Promise<SubmissionResult>((resolve) => { submissionResolver = resolve; });
+  const submission = new Promise<SubmissionResult>((resolve) => {
+    submissionResolver = resolve;
+  });
 
   const server = await createServer({
     cwd: args.cwd,
@@ -138,7 +147,9 @@ async function main(): Promise<number> {
     token,
   });
 
-  const sigintHandler = () => { submissionResolver?.({ cancelled: true }); };
+  const sigintHandler = () => {
+    submissionResolver?.({ cancelled: true });
+  };
   process.on("SIGINT", sigintHandler);
   process.on("SIGTERM", sigintHandler);
 
@@ -184,7 +195,9 @@ async function main(): Promise<number> {
   return 0;
 }
 
-main().then((code) => process.exit(code)).catch((e: Error) => {
-  process.stderr.write(`diff-review: ${e.message ?? e}\n`);
-  process.exit(1);
-});
+main()
+  .then((code) => process.exit(code))
+  .catch((e: Error) => {
+    process.stderr.write(`diff-review: ${e.message ?? e}\n`);
+    process.exit(1);
+  });

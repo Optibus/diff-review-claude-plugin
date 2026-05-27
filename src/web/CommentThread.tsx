@@ -31,6 +31,7 @@ export function CommentThread({ draft, onSave, onDelete, initiallyEditing = fals
         <textarea
           className="thread__textarea"
           value={body}
+          // biome-ignore lint/a11y/noAutofocus: focusing the comment box right after the user clicks a line is the intended flow
           autoFocus
           rows={4}
           placeholder="Leave a comment"
@@ -43,18 +44,25 @@ export function CommentThread({ draft, onSave, onDelete, initiallyEditing = fals
             if (e.key === "Escape") {
               e.preventDefault();
               if (draft.body === "") void onDelete();
-              else { setBody(draft.body); setEditing(false); }
+              else {
+                setBody(draft.body);
+                setEditing(false);
+              }
             }
           }}
         />
         <div className="thread__actions">
-          <button onClick={save} disabled={saving || body.trim() === ""}>
+          <button type="button" onClick={save} disabled={saving || body.trim() === ""}>
             {saving ? "Saving…" : "Save"}
           </button>
           <button
+            type="button"
             onClick={() => {
               if (draft.body === "") void onDelete();
-              else { setBody(draft.body); setEditing(false); }
+              else {
+                setBody(draft.body);
+                setEditing(false);
+              }
             }}
             disabled={saving}
           >
@@ -70,8 +78,12 @@ export function CommentThread({ draft, onSave, onDelete, initiallyEditing = fals
       <div className="thread__header">{range}</div>
       <div className="thread__body">{draft.body}</div>
       <div className="thread__actions">
-        <button onClick={() => setEditing(true)}>Edit</button>
-        <button onClick={() => void onDelete()}>Delete</button>
+        <button type="button" onClick={() => setEditing(true)}>
+          Edit
+        </button>
+        <button type="button" onClick={() => void onDelete()}>
+          Delete
+        </button>
       </div>
     </div>
   );

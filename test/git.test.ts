@@ -1,18 +1,18 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { promisify } from "node:util";
 import path from "node:path";
+import { test } from "node:test";
+import { promisify } from "node:util";
 import {
   changedFiles,
   commitsBetween,
   currentBranch,
   defaultBaseBranch,
   getDiff,
+  gitDir,
   isGitRepo,
   repoRoot,
-  gitDir,
 } from "../src/cli/git.js";
 
 const exec = promisify(execFile);

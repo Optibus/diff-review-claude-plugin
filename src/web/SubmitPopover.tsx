@@ -85,7 +85,9 @@ export function SubmitPopover({
         aria-expanded={open}
       >
         Submit review
-        <span className="submit-trigger__chevron" aria-hidden="true">▾</span>
+        <span className="submit-trigger__chevron" aria-hidden="true">
+          ▾
+        </span>
       </button>
       {open && (
         <div className="submit-popover" role="dialog" aria-label="Submit review">

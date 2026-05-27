@@ -42,13 +42,12 @@ function runBinary(args: string[], cwd: string): Promise<{ code: number; stdout:
   });
 }
 
-test("e2e: --auto-submit with no drafts → empty review, exit 1", async () => {
+test("e2e: --auto-submit with no drafts → empty review sentinel on stdout, exit 0", async () => {
   const { dir, fp } = await makeRepo();
   try {
     const r = await runBinary(["--auto-submit", "--no-browser"], dir);
-    assert.equal(r.code, 1);
-    assert.match(r.stderr, /\(empty review\)/);
-    assert.equal(r.stdout, "");
+    assert.equal(r.code, 0);
+    assert.match(r.stdout, /\(empty review\)/);
   } finally { await cleanup(dir, fp); }
 });
 
@@ -207,12 +206,12 @@ test("e2e: full HTTP flow — start server, save draft via fetch, submit", async
   } finally { await cleanup(dir, fp); }
 });
 
-test("e2e: cancel via POST /api/cancel returns exit 1", async () => {
+test("e2e: cancel via POST /api/cancel exits 0 with sentinel on stdout", async () => {
   const { dir, fp } = await makeRepo();
   try {
     const child = spawn(process.execPath, [BIN, "--no-browser"], { cwd: dir });
-    let stderrBuf = "";
-    child.stderr.on("data", (b) => stderrBuf += b);
+    let stdoutBuf = "";
+    child.stdout.on("data", (b) => stdoutBuf += b);
 
     const url = await new Promise<string>((resolve) => {
       child.stderr.on("data", (b) => {
@@ -226,7 +225,7 @@ test("e2e: cancel via POST /api/cancel returns exit 1", async () => {
 
     await fetch(`http://127.0.0.1:${port}/api/cancel?t=${token}`, { method: "POST" });
     const code = await new Promise<number>((res) => child.on("close", (c) => res(c ?? -1)));
-    assert.equal(code, 1);
-    assert.match(stderrBuf, /\(review cancelled\)/);
+    assert.equal(code, 0);
+    assert.match(stdoutBuf, /\(review cancelled\)/);
   } finally { await cleanup(dir, fp); }
 });

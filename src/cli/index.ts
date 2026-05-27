@@ -162,16 +162,20 @@ async function main(): Promise<number> {
     await releaseLock(fingerprint);
   }
 
+  // Cancel and empty-review are normal no-op outcomes, not errors. Emit the
+  // sentinel on stdout and exit 0 (like the reconnect path) so the slash
+  // command's `!`-substitution succeeds and Claude reads the marker as the
+  // review output, rather than reporting a failed shell command.
   if (result.cancelled) {
-    process.stderr.write(`(review cancelled)\n`);
-    return 1;
+    process.stdout.write(`(review cancelled)\n`);
+    return 0;
   }
 
   const store = result.store ?? (await loadDrafts(fingerprint));
   const md = formatReview(store);
   if (!md) {
-    process.stderr.write(`(empty review)\n`);
-    return 1;
+    process.stdout.write(`(empty review)\n`);
+    return 0;
   }
   process.stdout.write(md);
   if (!md.endsWith("\n")) process.stdout.write("\n");

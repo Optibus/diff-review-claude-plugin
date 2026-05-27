@@ -998,16 +998,16 @@ async function main() {
     await releaseLock(fingerprint);
   }
   if (result.cancelled) {
-    process.stderr.write(`(review cancelled)
+    process.stdout.write(`(review cancelled)
 `);
-    return 1;
+    return 0;
   }
   const store = result.store ?? await loadDrafts(fingerprint);
   const md = formatReview(store);
   if (!md) {
-    process.stderr.write(`(empty review)
+    process.stdout.write(`(empty review)
 `);
-    return 1;
+    return 0;
   }
   process.stdout.write(md);
   if (!md.endsWith("\n")) process.stdout.write("\n");

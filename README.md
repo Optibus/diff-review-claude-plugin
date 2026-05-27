@@ -27,7 +27,7 @@ Useful for trying it before publishing, or for hacking on it.
 git clone https://github.com/Optibus/diff-review-claude-plugin.git
 cd diff-review-claude-plugin
 
-claude plugin marketplace add .
+claude plugin marketplace add ./
 claude plugin install diff-review@diff-review-marketplace
 ```
 

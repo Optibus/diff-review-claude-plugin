@@ -132,10 +132,12 @@ test.describe("diff-review UI", () => {
     await app.getByRole("button", { name: "Yes, discard" }).click();
     await expect(app.locator(".bigmsg")).toContainText("Review cancelled");
 
-    // Binary should exit non-zero with the cancelled message.
-    const { code, stderr } = await bin.exit;
-    expect(code).toBe(1);
-    expect(stderr).toContain("(review cancelled)");
+    // Binary exits 0 with the cancelled sentinel on stdout, so the slash
+    // command's `!`-substitution succeeds instead of reporting a failed shell
+    // command. Claude reads the marker and takes no action.
+    const { code, stdout } = await bin.exit;
+    expect(code).toBe(0);
+    expect(stdout).toContain("(review cancelled)");
   });
 
   test("submit produces the correct markdown on stdout and exits 0", async ({ app, bin }) => {
@@ -279,7 +281,7 @@ test("drafts persist across discard and reappear on resume", async () => {
     } finally {
       await page1.close();
     }
-    expect((await bin1.exit).code).toBe(1);
+    expect((await bin1.exit).code).toBe(0);
 
     // --- session 2: same repo, comment is restored ---
     const bin2 = await startBinary({ cwd: repo.dir });

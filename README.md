@@ -234,11 +234,14 @@ Hard goal: minimize them.
 ```bash
 npm install
 npx playwright install chromium    # one-time: ~90 MB of test browser
+npm run lint                       # Biome lint + format check
 npm run typecheck                  # tsc --noEmit
 npm test                           # unit + browser tests
 npm run build                      # rebuild bin/diff-review.js
 
 # subset scripts
+npm run lint:fix                   # Biome auto-fix + format
+npm run format                     # Biome format only
 npm run test:unit                  # node:test only (fast — no browser)
 npm run test:browser               # build + Playwright suite
 node scripts/screenshot.mjs        # regenerate docs/screenshot.png

@@ -70,6 +70,22 @@ function buildTree(files: FileData[]): DirNode {
   return root;
 }
 
+// Flatten the tree to its files in the exact top-to-bottom order the sidebar
+// renders them (depth-first, directories grouped). The diff panel uses this so
+// its file order matches the file tree. Idempotent: re-building the tree from
+// an already-ordered list yields the same order.
+export function fileTreeOrder(files: FileData[]): FileData[] {
+  const out: FileData[] = [];
+  const walk = (node: DirNode) => {
+    for (const c of node.children) {
+      if (c.kind === "file") out.push(c.file);
+      else walk(c);
+    }
+  };
+  walk(buildTree(files));
+  return out;
+}
+
 // VS Code-style: any dir whose only child is also a dir gets merged into it.
 // Recurses bottom-up so chains of length > 2 collapse fully.
 function compressDir(node: DirNode): DirNode {

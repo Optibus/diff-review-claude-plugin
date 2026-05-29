@@ -21,6 +21,7 @@ import {
 import type { Draft } from "../cli/types";
 import { api } from "./api";
 import { CommentThread } from "./CommentThread";
+import { fileTreeOrder } from "./FileTree";
 import { displayPath } from "./paths";
 import { languageFor, refractor } from "./syntax";
 
@@ -67,7 +68,9 @@ export function DiffView({
 }: Props) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-parse only when the diff text changes; onParsed is a stable notify-callback we deliberately exclude
   const files: FileData[] = useMemo(() => {
-    const parsed = diffText.trim() ? parseDiff(diffText) : [];
+    // Order files to match the file tree's depth-first, directory-grouped
+    // layout so the diff panel and sidebar stay in sync.
+    const parsed = diffText.trim() ? fileTreeOrder(parseDiff(diffText)) : [];
     onParsed?.(parsed);
     return parsed;
   }, [diffText]);
